@@ -1,0 +1,28 @@
+{
+    "version": 2,
+    "name": "ann-frontend",
+    "framework": null,
+    "buildCommand": null,
+    "outputDirectory": "frontend",
+    "routes": [
+        {
+            "src": "/news",
+            "dest": "/frontend/public/news.html"
+        },
+        {
+            "src": "/(.*)",
+            "dest": "/frontend/$1"
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "Cache-Control",
+                    "value": "public, max-age=0, must-revalidate"
+                }
+            ]
+        }
+    ]
+}
