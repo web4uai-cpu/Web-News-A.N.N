@@ -419,8 +419,8 @@
             <div class="client-badge" id="client-tier">PRO TIER</div>
         </header>
 
+        <!-- Quota Metrics -->
         <section class="grid-2">
-            <!-- Quota Metrics -->
             <div class="glass-card">
                 <div class="card-title"><i data-lucide="activity"></i> Monthly Request Quota</div>
                 <div class="quota-text"><span id="quota-used" style="color: #fff;">0</span> <span
@@ -431,23 +431,21 @@
                 <p style="margin-top: 1rem; color: #a0a0c0; font-size: 0.9rem;">Resets in 12 days</p>
             </div>
 
-            <!-- Endpoint Info -->
-            <div class="glass-card">
-                <div class="card-title"><i data-lucide="zap"></i> Global Live Firehose</div>
-                <p style="color: #a0a0c0; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">
-                    Connect to the passive A.N.N. WebSockets to stream breaking autonomous news exactly as the AI
-                    generates it globally, directly into your own applications.
-                </p>
-                <div class="code-block" style="margin-top: 0;">
-                    <button class="copy-btn" onclick="alert('Copied to clipboard!')"><i data-lucide="copy"
-                            style="width: 16px;"></i></button>
-                    <pre><code>const ws = new WebSocket('wss://api.ann.com/ws');
-ws.onopen = () => {
-  ws.send(JSON.stringify({ 
-    action: "authenticate", 
-    key: "YOUR_API_KEY" 
-  }));
-};</code></pre>
+            <!-- Creator Tier: Social Media Auto-Pilot -->
+            <div class="glass-card" id="social-creator-panel">
+                <div class="card-title"><i data-lucide="instagram" style="color:#d946ef;"></i> Social Media Auto-Pilot
+                </div>
+                <p style="color: #a0a0c0; font-size: 0.9rem; margin-bottom: 1.5rem;">Securely link your personal Social
+                    Media accounts. A.N.N will automatically generate and blast your custom AI videos directly to your
+                    feeds.</p>
+                <div style="display:flex; flex-direction:column; gap:10px;">
+                    <input type="password" class="api-input" id="client-ig-token" placeholder="Your Instagram Token"
+                        style="margin-bottom:0; padding: 0.8rem;">
+                    <input type="text" class="api-input" id="client-fb-id" placeholder="Your Facebook Page ID"
+                        style="margin-bottom:0; padding: 0.8rem;">
+                    <button class="btn-glow"
+                        style="margin-top:0.5rem; background: linear-gradient(90deg, #d946ef, #6366f1); padding:0.8rem;"
+                        onclick="linkSocialKeys(event)"><i data-lucide="link"></i> Link Social Profiles</button>
                 </div>
             </div>
         </section>
@@ -555,6 +553,26 @@ ws.onopen = () => {
                 const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
                 const socket = new WebSocket(`${wsProto}//${window.location.host}/ws/breaking-news?api_key=${currentApiKey}`);
                 socket.onopen = () => console.log("🔒 Secured Firehose Connected.");
+
+                // Catch Background Task Deliverables
+                socket.onmessage = (event) => {
+                    const data = JSON.parse(event.data);
+
+                    // If this was a custom generation that just finished
+                    if (data.type === "studio_delivery") {
+                        const studioDiv = document.getElementById('studio-status');
+                        studioDiv.innerHTML = `
+                            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 1.5rem; border-radius: 12px; margin-top:1rem; text-align: center;">
+                                <h3 style="color: #10b981; margin-bottom: 0.5rem;"><i data-lucide="check-circle"></i> Broadcast Ready!</h3>
+                                <p style="color: #a0a0c0; font-size: 0.9rem; margin-bottom: 1rem;">Topic: "${data.topic}"</p>
+                                <a href="${data.video_url || '#'}" download="ANN_Broadcast_${data.topic.replace(/\s+/g, '_')}.mp4" class="btn-glow" style="display:inline-block; text-decoration:none; background: #10b981; margin-bottom: 0.5rem;"><i data-lucide="download"></i> Download .MP4 Video</a>
+                                <button class="btn-glow" style="background: linear-gradient(90deg, #d946ef, #6366f1);" onclick="alert('Successfully pushed to Instagram Queue!')"><i data-lucide="send"></i> Auto-Post to Linked Socials</button>
+                            </div>
+                        `;
+                        lucide.createIcons();
+                    }
+                };
+
                 socket.onclose = () => console.error("Firehose Connection Rejected.");
 
                 // Animate Progress Bar
@@ -597,6 +615,33 @@ ws.onopen = () => {
                 document.getElementById('studio-status').innerHTML = `<span style="color:#10b981;">✅ Generation Complete: ${data.script_id} delivered securely.</span>`;
             } catch (e) {
                 document.getElementById('studio-status').innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+            }
+        }
+
+        async function linkSocialKeys() {
+            const igToken = document.getElementById('client-ig-token').value.trim();
+            const fbId = document.getElementById('client-fb-id').value.trim();
+            if (!igToken || !fbId) return alert("Please enter both your Instagram Token and Facebook Page ID.");
+
+            try {
+                const btn = event.currentTarget;
+                const originalText = btn.innerHTML;
+                btn.innerHTML = '<i class="spin" data-lucide="loader-2"></i> Linking...';
+                lucide.createIcons();
+
+                const res = await fetch(`/api/v1/b2b/portal/social-keys?ig_token=${encodeURIComponent(igToken)}&fb_page_id=${encodeURIComponent(fbId)}`, {
+                    method: 'POST',
+                    headers: { 'X-ANN-API-Key': currentApiKey }
+                });
+
+                if (!res.ok) throw new Error("Failed to link social accounts.");
+                const data = await res.json();
+
+                btn.innerHTML = `<i data-lucide="check-circle" style="color:#10b981;"></i> Profiles Linked Successfully`;
+                lucide.createIcons();
+                alert(data.message);
+            } catch (e) {
+                alert("Error linking socials: " + e.message);
             }
         }
 
