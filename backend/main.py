@@ -764,6 +764,10 @@ async def trigger_client_studio_generation(topic: str, background_tasks: Backgro
     if not client:
         raise HTTPException(status_code=401, detail="Invalid API Key.")
     
+    # 🔒 STRICT TIER ENFORCEMENT 
+    if client.plan_tier != "enterprise":
+        raise HTTPException(status_code=403, detail=f"Your current tier ({client.plan_tier}) does not include On-Demand Studio access. Please upgrade to Enterprise.")
+    
     cost_multiplier = 50
     if client.requests_used + cost_multiplier > client.monthly_quota:
         raise HTTPException(status_code=402, detail="Insufficient API Validation Quota. Please upgrade your Stripe plan.")
@@ -780,7 +784,7 @@ async def trigger_client_studio_generation(topic: str, background_tasks: Backgro
 
 # ── High-Performance WebSocket Streaming ───────────────
 
-from fastapi import WebSocket, WebSocketDisconnect
+from fastapi import WebSocket, WebSocketDisconnect, Query
 
 class ConnectionManager:
     def __init__(self):
@@ -806,11 +810,23 @@ class ConnectionManager:
 ws_manager = ConnectionManager()
 
 @app.websocket("/ws/breaking-news")
-async def breaking_news_stream(websocket: WebSocket):
+async def breaking_news_stream(websocket: WebSocket, api_key: str = Query(None)):
     """
     World-class real-time WebSocket connection.
     Connects frontend clients instantly to the pipeline pulse without reloading.
+    REQUIRES an active B2B API Key or it will silently kill the connection.
     """
+    # 🔒 CRYPTOGRAPHIC CONNECTION LOCKDOWN
+    if not api_key:
+        await websocket.close(code=1008, reason="Missing API Authentication.")
+        return
+        
+    db = next(get_client_db())
+    client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
+    if not client:
+        await websocket.close(code=1008, reason="Invalid or Suspended API Key.")
+        return
+        
     await ws_manager.connect(websocket)
     try:
         while True:
