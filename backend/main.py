@@ -757,8 +757,8 @@ async def get_client_portal_metrics(api_key: str = Header(..., alias="X-ANN-API-
     }
 
 @app.post("/api/v1/b2b/portal/social-keys", tags=["B2B Client Portal"])
-async def link_client_social_keys(ig_token: str, fb_page_id: str, api_key: str = Header(..., alias="X-ANN-API-Key")):
-    """Saves custom social media keys for Creator Tier Auto-Pilot."""
+async def link_client_social_keys(ig_token: str = "", fb_page_id: str = "", linkedin_token: str = "", api_key: str = Header(..., alias="X-ANN-API-Key")):
+    """Saves custom social media keys for Creator Tier Auto-Pilot, including LinkedIn for Corporate Influencers."""
     db = next(get_client_db())
     client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
     if not client:
@@ -767,9 +767,10 @@ async def link_client_social_keys(ig_token: str, fb_page_id: str, api_key: str =
     # In production, these should be encrypted at rest using Fernet before saving to the DB.
     # client.custom_ig_token = ig_token
     # client.custom_fb_id = fb_page_id
+    # client.custom_linkedin_token = linkedin_token
     # db.commit()
     
-    log.info("b2b_socials_linked", client=client.client_name, ig_connected=bool(ig_token))
+    log.info("b2b_socials_linked", client=client.client_name, ig_connected=bool(ig_token), linkedin_connected=bool(linkedin_token))
     return {"status": "success", "message": "Social Accounts Linked Successfully! A.N.N will now post your custom generations directly to your feeds."}
 
 @app.post("/api/v1/b2b/portal/generate", tags=["B2B Client Portal"])

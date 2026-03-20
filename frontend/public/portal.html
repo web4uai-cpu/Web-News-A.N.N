@@ -622,7 +622,9 @@
         async function linkSocialKeys() {
             const igToken = document.getElementById('client-ig-token').value.trim();
             const fbId = document.getElementById('client-fb-id').value.trim();
-            if (!igToken || !fbId) return alert("Please enter both your Instagram Token and Facebook Page ID.");
+            const linkedinToken = document.getElementById('client-linkedin-token').value.trim();
+
+            if (!igToken && !fbId && !linkedinToken) return alert("Please enter at least one Social Media Token to link.");
 
             try {
                 const btn = event.currentTarget;
@@ -630,7 +632,7 @@
                 btn.innerHTML = '<i class="spin" data-lucide="loader-2"></i> Linking...';
                 lucide.createIcons();
 
-                const res = await fetch(`/api/v1/b2b/portal/social-keys?ig_token=${encodeURIComponent(igToken)}&fb_page_id=${encodeURIComponent(fbId)}`, {
+                const res = await fetch(`/api/v1/b2b/portal/social-keys?ig_token=${encodeURIComponent(igToken)}&fb_page_id=${encodeURIComponent(fbId)}&linkedin_token=${encodeURIComponent(linkedinToken)}`, {
                     method: 'POST',
                     headers: { 'X-ANN-API-Key': currentApiKey }
                 });
