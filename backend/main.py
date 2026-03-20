@@ -793,16 +793,24 @@ async def trigger_client_studio_generation(topic: str, background_tasks: Backgro
     client.requests_used += cost_multiplier
     db.commit()
     
-    # Intelligently override the core news scraping mechanisms in a background task to process custom topics
-    background_tasks.add_task(run_b2b_custom_pipeline, topic=topic, api_key=api_key)
-    log.info("b2b_client_triggered_studio", client=client.client_name, topic=topic, quota_billed=cost_multiplier)
+    # ── INFINITE QUEUE SYMPHONY ──
+    # Instantly push the heavy execution payload directly into the Redis Queue.
+    # Celery robustly executes it on a discrete worker node guaranteeing 100% API uptime.
+    from backend.services.tasks import b2b_distributed_pipeline_task
+    task = b2b_distributed_pipeline_task.delay(topic=topic, api_key=api_key)
+    log.info("b2b_client_triggered_studio", client=client.client_name, topic=topic, quota_billed=cost_multiplier, celery_task_id=task.id)
     
-    return {"status": "processing", "message": f"Pipeline triggered for '{topic}'. Deducted {cost_multiplier} quota."}
+    return {"status": "processing", "message": f"Pipeline queued for '{topic}'. Deducted {cost_multiplier} quota.", "task_id": task.id}
 
-# ── High-Performance WebSocket Streaming ───────────────
+# ── High-Performance Distributed WebSocket Symphony ──
 
 from fastapi import WebSocket, WebSocketDisconnect, Query
 import asyncio
+import redis.asyncio as aioredis
+import json
+import os
+
+redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 
 class ConnectionManager:
     def __init__(self):
@@ -827,8 +835,7 @@ class ConnectionManager:
 
     async def broadcast_direct_to_client(self, api_key: str, payload: dict):
         """Streams a custom isolated generation back to the specific client."""
-        # Note: In production, track mapping of api_keys -> websockets
-        # For simplicity, sending to all authenticated clients holding that exact key
+        # Note: In production, track mapping of api_keys -> websockets better
         for connection in self.active_connections:
             query_params = connection.query_params
             if query_params.get("api_key") == api_key:
@@ -839,29 +846,36 @@ class ConnectionManager:
 
 ws_manager = ConnectionManager()
 
-async def run_b2b_custom_pipeline(topic: str, api_key: str):
-    """The isolated Background Task executing the heavy scraping, synthesis, and media generation explicitly for a B2B Creator."""
+# ── Redis Pub/Sub Listener for Distributed Workers ──
+async def listen_to_redis_broadcasts():
+    """
+    Runs permanently in the background of FastAPI.
+    Listens to the 'ann_broadcasts' channel on Redis. When a Celery node finishes 
+    generating an AI video, it publishes the MP4 URL here. This listener grabs it
+    and fires it instantaneously up the WebSockets to the client's browser!
+    """
+    log.info("redis_pubsub_listener_started")
     try:
-        log.info("b2b_pipeline_synthesizing_full_media", topic=topic)
-        # 1. Scrape & generate script
-        final_script = await master_pipeline(source="newsapi", generate_media=True, specific_query=topic)
+        redis = aioredis.from_url(redis_url)
+        pubsub = redis.pubsub()
+        await pubsub.subscribe("ann_broadcasts")
         
-        # 2. Extract final video URL (mocked extraction, assuming pipeline creates files)
-        # In actual production, final_script would contain the explicit ElevenLabs & HeyGen final URLs.
-        video_url = final_script.get("video_url", "https://ann-storage.s3.amazonaws.com/example_broadcast.mp4")
-        
-        # 3. Stream the 'studio_delivery' payload back to the explicit client waiting via WebSocket
-        payload = {
-            "type": "studio_delivery",
-            "topic": topic,
-            "script_id": final_script["id"],
-            "video_url": video_url,
-            "status": "complete"
-        }
-        await ws_manager.broadcast_direct_to_client(api_key, payload)
-        
+        async for message in pubsub.listen():
+            if message["type"] == "message":
+                payload = json.loads(message["data"])
+                # Extract the api_key routing metric and the payload
+                api_key = payload.get("api_key")
+                if api_key:
+                    log.info("symphony_routing_delivery_to_client", topic=payload.get("topic"))
+                    await ws_manager.broadcast_direct_to_client(api_key, payload)
     except Exception as e:
-        log.error("b2b_pipeline_failed", topic=topic, error=str(e))
+        log.error("redis_pubsub_listener_failed", error=str(e))
+
+@app.on_event("startup")
+async def startup_event():
+    # Start the continuous Redis listener loop
+    asyncio.create_task(listen_to_redis_broadcasts())
+
 
 @app.websocket("/ws/breaking-news")
 async def breaking_news_stream(websocket: WebSocket, api_key: str = Query(None)):
