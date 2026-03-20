@@ -1,13 +1,17 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="description" content="A.N.N. — AI News Network Dashboard. Autonomous multi-agent AI news broadcast system.">
+    <meta name="description"
+        content="A.N.N. — AI News Network Dashboard. Autonomous multi-agent AI news broadcast system.">
     <title>A.N.N. — AI News Network | Command Center</title>
     <link rel="stylesheet" href="/static/css/styles.css">
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
 </head>
+
 <body>
 
     <!-- ═══ Header ═════════════════════════════════════ -->
@@ -21,10 +25,16 @@
                 </div>
             </a>
 
-            <div class="header-live">
+            <div class="header-live" style="margin-right: 20px;">
                 <span class="live-dot"></span>
                 <span>LIVE</span>
             </div>
+
+            <!-- Settings Button Injection -->
+            <button onclick="openSettings()" class="btn btn-secondary btn-sm"
+                style="display:flex; align-items:center; gap:6px;">
+                ⚙️ API Settings
+            </button>
 
             <div class="header-status">
                 <div class="status-badge">
@@ -102,14 +112,13 @@
 
                 <div class="control-group">
                     <label class="control-label" for="query-input">Search Query</label>
-                    <input type="text" class="control-input" id="query-input" 
-                           placeholder="e.g. AI regulation, climate summit...">
+                    <input type="text" class="control-input" id="query-input"
+                        placeholder="e.g. AI regulation, climate summit...">
                 </div>
 
                 <div class="control-group" style="max-width: 100px">
                     <label class="control-label" for="max-articles">Max Articles</label>
-                    <input type="number" class="control-input" id="max-articles" 
-                           value="5" min="1" max="20">
+                    <input type="number" class="control-input" id="max-articles" value="5" min="1" max="20">
                 </div>
 
                 <div class="control-group" style="max-width: 140px; justify-content: flex-end;">
@@ -189,14 +198,14 @@
                     <div style="display: flex; flex-direction: column; gap: 0.75rem;">
                         <div class="control-group">
                             <label class="control-label" for="manual-url">Source URL (optional)</label>
-                            <input type="url" class="control-input" id="manual-url" 
-                                   placeholder="https://example.com/article...">
+                            <input type="url" class="control-input" id="manual-url"
+                                placeholder="https://example.com/article...">
                         </div>
                         <div class="control-group">
                             <label class="control-label" for="manual-text">Article Text</label>
-                            <textarea class="control-input" id="manual-text" rows="5" 
-                                      placeholder="Paste the full article text here (min 50 characters)..."
-                                      style="resize: vertical; font-family: var(--font-sans);"></textarea>
+                            <textarea class="control-input" id="manual-text" rows="5"
+                                placeholder="Paste the full article text here (min 50 characters)..."
+                                style="resize: vertical; font-family: var(--font-sans);"></textarea>
                         </div>
                         <button class="btn btn-primary" onclick="processManualArticle()">
                             ⚡ Process Article
@@ -231,6 +240,81 @@
     <!-- ═══ Toast Container ═══════════════════════════ -->
     <div class="toast-container" id="toast-container"></div>
 
+    <!-- ═══ Settings Modal ════════════════════════════ -->
+    <div id="settings-modal"
+        style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:9999; align-items:center; justify-content:center; backdrop-filter:blur(8px);">
+        <div
+            style="background:#151525; border:1px solid #2d2d44; box-shadow:0 10px 40px rgba(0,0,0,0.6); border-radius:12px; width:600px; max-width:90%; padding:2rem; max-height:90vh; overflow-y:auto; position:relative;">
+            <button onclick="closeSettings()"
+                style="position:absolute; right:1.5rem; top:1.5rem; background:transparent; border:none; color:#a0a0c0; cursor:pointer; font-size:1.2rem;">✕</button>
+            <h2
+                style="margin-top:0; color:#fff; border-bottom:1px solid #2d2d44; padding-bottom:1rem; margin-bottom:1.5rem;">
+                ⚙️ System API Keys & Integrations</h2>
+
+            <form id="settings-form" onsubmit="saveSettings(event)">
+
+                <h3 style="color:#818cf8; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase;">📰 News
+                    Scraping Sources</h3>
+                <div class="control-group" style="margin-bottom:1rem;">
+                    <label class="control-label">NewsAPI Key</label>
+                    <input type="password" class="control-input" id="NEWS_API_KEY"
+                        placeholder="Masked for security (leave empty to keep current)">
+                </div>
+                <div class="control-group" style="margin-bottom:1.5rem;">
+                    <label class="control-label">AlphaVantage Key (Finance)</label>
+                    <input type="password" class="control-input" id="ALPHA_VANTAGE_KEY"
+                        placeholder="Masked for security">
+                </div>
+
+                <h3 style="color:#818cf8; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase;">🧠 AI
+                    Brains (LLM)</h3>
+                <div class="control-group" style="margin-bottom:1.5rem;">
+                    <label class="control-label">Primary LLM API Key (OpenAI / Gemini)</label>
+                    <input type="password" class="control-input" id="LLM_API_KEY" placeholder="Masked for security">
+                </div>
+
+                <h3 style="color:#818cf8; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase;">🎬 Media
+                    Avatars & Voice</h3>
+                <div class="control-group" style="margin-bottom:1rem;">
+                    <label class="control-label">ElevenLabs API Key</label>
+                    <input type="password" class="control-input" id="ELEVENLABS_API_KEY"
+                        placeholder="Masked for security">
+                </div>
+                <div class="control-group" style="margin-bottom:1.5rem;">
+                    <label class="control-label">HeyGen Video Key</label>
+                    <input type="password" class="control-input" id="HEYGEN_API_KEY" placeholder="Masked for security">
+                </div>
+
+                <h3 style="color:#818cf8; font-size:0.9rem; letter-spacing:0.05em; text-transform:uppercase;">📱 Social
+                    Media Broadcasters</h3>
+                <div class="control-group" style="margin-bottom:1rem;">
+                    <label class="control-label">Twitter/X Bearer Token</label>
+                    <input type="password" class="control-input" id="TWITTER_BEARER_TOKEN"
+                        placeholder="Masked for security">
+                </div>
+                <div class="control-group" style="margin-bottom:1rem;">
+                    <label class="control-label">Facebook Page Token</label>
+                    <input type="password" class="control-input" id="FACEBOOK_PAGE_TOKEN"
+                        placeholder="Masked for security">
+                </div>
+                <div class="control-group" style="margin-bottom:1rem;">
+                    <label class="control-label">Instagram Access Token</label>
+                    <input type="password" class="control-input" id="INSTAGRAM_ACCESS_TOKEN"
+                        placeholder="Masked for security">
+                </div>
+                <div class="control-group" style="margin-bottom:2rem;">
+                    <label class="control-label">Instagram Account ID</label>
+                    <input type="password" class="control-input" id="INSTAGRAM_ACCOUNT_ID"
+                        placeholder="Masked for security">
+                </div>
+
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn btn-primary" id="save-settings-btn">Save Configurations</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     <!-- ═══ Scripts ════════════════════════════════════ -->
     <script src="/static/js/app.js"></script>
     <script>
@@ -241,6 +325,69 @@
             state.logs = [];
             addLog('info', 'Logs cleared');
         }
+
+        // Settings Modal Logic
+        async function openSettings() {
+            document.getElementById('settings-modal').style.display = 'flex';
+            try {
+                const res = await fetch('/api/v1/admin/settings');
+                const keys = await res.json();
+                const inputs = document.querySelectorAll('#settings-form input');
+                inputs.forEach(input => {
+                    const maskedVal = keys[input.id];
+                    if (maskedVal) {
+                        input.placeholder = "Set: " + maskedVal + " (leave empty to keep)";
+                        input.value = ""; // Don't expose it to plaintext edit
+                    }
+                });
+            } catch (error) {
+                console.error("Failed to fetch settings.", error);
+            }
+        }
+        function closeSettings() {
+            document.getElementById('settings-modal').style.display = 'none';
+        }
+        async function saveSettings(e) {
+            e.preventDefault();
+            const btn = document.getElementById('save-settings-btn');
+            btn.innerHTML = 'Saving...';
+            btn.disabled = true;
+
+            const payload = {};
+            const inputs = document.querySelectorAll('#settings-form input');
+            inputs.forEach(input => {
+                if (input.value.trim() !== '') {
+                    payload[input.id] = input.value.trim();
+                }
+            });
+
+            try {
+                const res = await fetch('/api/v1/admin/settings', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(payload)
+                });
+                const data = await res.json();
+
+                // Using existing app.js toast function
+                if (typeof showToast === "function") {
+                    showToast(data.message || 'Settings saved successfully', 'success');
+                } else {
+                    alert(data.message || 'Settings saved successfully');
+                }
+
+                // Clear UI so keys aren't visible
+                inputs.forEach(input => input.value = "");
+                closeSettings();
+            } catch (error) {
+                if (typeof showToast === "function") showToast('Failed to save settings', 'error');
+                console.error(error);
+            } finally {
+                btn.innerHTML = 'Save Configurations';
+                btn.disabled = false;
+            }
+        }
     </script>
 </body>
+
 </html>

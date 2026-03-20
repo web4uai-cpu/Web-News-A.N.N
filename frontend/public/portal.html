@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A.N.N. Enterprise | B2B Client Portal</title>
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@700;900&display=swap"
+        rel="stylesheet">
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <style>
+        :root {
+            --bg-dark: #0a0a0f;
+            --bg-panel: #12121c;
+            --bg-glass: rgba(25, 25, 40, 0.6);
+            --accent-primary: #6366f1;
+            --accent-glow: rgba(99, 102, 241, 0.4);
+            --sidebar-width: 280px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background: var(--bg-dark);
+            background-image: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08), transparent 35%);
+            color: #fff;
+            min-height: 100vh;
+            display: flex;
+        }
+
+        /* ── Login Overlay ── */
+        .login-overlay {
+            position: fixed;
+            inset: 0;
+            background: var(--bg-dark);
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background-image: grid(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+        }
+
+        .login-box {
+            background: var(--bg-glass);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 3rem;
+            border-radius: 24px;
+            text-align: center;
+            width: 450px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            animation: float 6s ease-in-out infinite;
+        }
+
+        .login-box h1 {
+            font-family: 'Outfit';
+            font-size: 2.5rem;
+            letter-spacing: -1px;
+            margin-bottom: 0.5rem;
+        }
+
+        .login-box p {
+            color: #a0a0c0;
+            margin-bottom: 2rem;
+        }
+
+        .api-input {
+            width: 100%;
+            padding: 1rem;
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid #2d2d44;
+            color: #fff;
+            border-radius: 12px;
+            font-family: monospace;
+            font-size: 1rem;
+            margin-bottom: 1.5rem;
+            outline: none;
+            transition: border 0.3s;
+        }
+
+        .api-input:focus {
+            border-color: var(--accent-primary);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .btn-glow {
+            width: 100%;
+            padding: 1rem;
+            background: var(--accent-primary);
+            border: none;
+            color: #fff;
+            font-weight: 600;
+            font-size: 1rem;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-glow:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px var(--accent-glow);
+        }
+
+        /* ── Sidebar ── */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg-panel);
+            border-right: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 3rem;
+        }
+
+        .brand-icon {
+            color: var(--accent-primary);
+        }
+
+        .brand-name {
+            font-family: 'Outfit';
+            font-size: 1.5rem;
+            font-weight: 900;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 1rem;
+            color: #a0a0c0;
+            cursor: pointer;
+            border-radius: 12px;
+            transition: all 0.2s;
+            margin-bottom: 0.5rem;
+        }
+
+        .nav-item:hover,
+        .nav-item.active {
+            background: rgba(99, 102, 241, 0.1);
+            color: var(--accent-primary);
+        }
+
+        /* ── Main Content ── */
+        .main-content {
+            flex: 1;
+            padding: 3rem;
+            overflow-y: auto;
+            display: none;
+        }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            margin-bottom: 3rem;
+        }
+
+        .header h1 {
+            font-family: 'Outfit';
+            font-size: 2rem;
+        }
+
+        .header .client-badge {
+            background: rgba(99, 102, 241, 0.15);
+            border: 1px solid var(--accent-primary);
+            color: #818cf8;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+
+        /* ── Quota Cards ── */
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: 24px;
+            padding: 2.5rem;
+            position: relative;
+            overflow: hidden;
+            backdrop-filter: blur(10px);
+        }
+
+        .glass-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+        }
+
+        .card-title {
+            color: #a0a0c0;
+            font-size: 0.9rem;
+            text-transform: uppercase;
+            letter-spacing: 0.1em;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .quota-text {
+            font-family: 'Outfit';
+            font-size: 3rem;
+            margin-bottom: 1rem;
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: var(--accent-primary);
+            border-radius: 4px;
+            width: 0%;
+            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* ── On-Demand Studio ── */
+        .studio-panel {
+            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), transparent);
+            border: 1px solid rgba(99, 102, 241, 0.2);
+            border-radius: 24px;
+            padding: 3rem;
+        }
+
+        .studio-header {
+            text-align: center;
+            margin-bottom: 2rem;
+        }
+
+        .studio-header h2 {
+            font-family: 'Outfit';
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .studio-header p {
+            color: #a0a0c0;
+        }
+
+        .search-rig {
+            display: flex;
+            gap: 1rem;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .search-input {
+            flex: 1;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid #2d2d44;
+            color: #fff;
+            padding: 1.25rem;
+            border-radius: 16px;
+            font-size: 1.1rem;
+            outline: none;
+        }
+
+        .search-btn {
+            background: var(--accent-primary);
+            color: #fff;
+            border: none;
+            padding: 0 2.5rem;
+            border-radius: 16px;
+            font-weight: 600;
+            font-size: 1.1rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            transition: 0.3s;
+        }
+
+        .search-btn:hover {
+            background: #4f46e5;
+            box-shadow: 0 10px 30px var(--accent-glow);
+        }
+
+        /* Code Snippet Block */
+        .code-block {
+            background: #0a0a0f;
+            border: 1px solid #2d2d44;
+            border-radius: 12px;
+            padding: 1.5rem;
+            font-family: monospace;
+            color: #a0a0c0;
+            margin-top: 2rem;
+            overflow-x: auto;
+            position: relative;
+        }
+
+        .code-block pre {
+            margin: 0;
+            line-height: 1.5;
+        }
+
+        .copy-btn {
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: #fff;
+            padding: 0.5rem;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px);
+            }
+
+            50% {
+                transform: translateY(-10px);
+            }
+
+            100% {
+                transform: translateY(0px);
+            }
+        }
+
+        @keyframes pulse-border {
+            0% {
+                border-color: rgba(99, 102, 241, 0.2);
+            }
+
+            50% {
+                border-color: rgba(99, 102, 241, 0.6);
+            }
+
+            100% {
+                border-color: rgba(99, 102, 241, 0.2);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SECURE LOGIN SCREEN -->
+    <div class="login-overlay" id="login-screen">
+        <div class="login-box">
+            <h1>A.N.N.</h1>
+            <p>Enterprise API Access Portal</p>
+            <form onsubmit="authenticateClient(event)">
+                <input type="password" id="api-key-input" class="api-input"
+                    placeholder="X-ANN-API-Key (e.g. ann_sk_...)" required>
+                <button type="submit" class="btn-glow" id="login-btn">Secure Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- DASHBOARD UI -->
+    <aside class="sidebar">
+        <div class="brand">
+            <i data-lucide="radio" class="brand-icon"></i>
+            <span class="brand-name">A.N.N. Hub</span>
+        </div>
+        <div class="nav-item active"><i data-lucide="layout-dashboard"></i> Overview</div>
+        <div class="nav-item"><i data-lucide="terminal"></i> API Documentation</div>
+        <div class="nav-item"><i data-lucide="video"></i> Studio Generator</div>
+        <div style="flex:1"></div>
+        <div class="nav-item" onclick="logout()" style="color: #ef4444;"><i data-lucide="log-out"></i> Disconnect</div>
+    </aside>
+
+    <main class="main-content" id="portal-dashboard">
+        <header class="header">
+            <div>
+                <h1 id="client-greeting">Welcome back, Client</h1>
+                <p style="color: #a0a0c0; margin-top:0.5rem;">Manage your enterprise data pipelines and high-velocity
+                    news feeds.</p>
+            </div>
+            <div class="client-badge" id="client-tier">PRO TIER</div>
+        </header>
+
+        <section class="grid-2">
+            <!-- Quota Metrics -->
+            <div class="glass-card">
+                <div class="card-title"><i data-lucide="activity"></i> Monthly Request Quota</div>
+                <div class="quota-text"><span id="quota-used" style="color: #fff;">0</span> <span
+                        style="color: #4b4b66; font-size: 2rem;">/ <span id="quota-max">10,000</span></span></div>
+                <div class="progress-track">
+                    <div class="progress-fill" id="quota-fill"></div>
+                </div>
+                <p style="margin-top: 1rem; color: #a0a0c0; font-size: 0.9rem;">Resets in 12 days</p>
+            </div>
+
+            <!-- Endpoint Info -->
+            <div class="glass-card">
+                <div class="card-title"><i data-lucide="zap"></i> Global Live Firehose</div>
+                <p style="color: #a0a0c0; font-size: 0.95rem; margin-bottom: 1.5rem; line-height: 1.6;">
+                    Connect to the passive A.N.N. WebSockets to stream breaking autonomous news exactly as the AI
+                    generates it globally, directly into your own applications.
+                </p>
+                <div class="code-block" style="margin-top: 0;">
+                    <button class="copy-btn" onclick="alert('Copied to clipboard!')"><i data-lucide="copy"
+                            style="width: 16px;"></i></button>
+                    <pre><code>const ws = new WebSocket('wss://api.ann.com/ws');
+ws.onopen = () => {
+  ws.send(JSON.stringify({ 
+    action: "authenticate", 
+    key: "YOUR_API_KEY" 
+  }));
+};</code></pre>
+                </div>
+            </div>
+        </section>
+
+        <!-- Tier 2: The Studio Generator -->
+        <section class="studio-panel" style="animation: pulse-border 4s infinite;">
+            <div class="studio-header">
+                <h2>On-Demand AI Studio</h2>
+                <p>Use your Enterprise quota to trigger the A.N.N. deep-generation pipelines specifically for your own
+                    keywords.</p>
+            </div>
+            <div class="search-rig">
+                <input type="text" id="custom-topic" class="search-input"
+                    placeholder="e.g. 'Apple Vision Pro Release' or 'Oil Prices Dubai'">
+                <button class="search-btn" onclick="triggerCustomGeneration()"><i data-lucide="sparkles"></i> Generate
+                    Broadcast</button>
+            </div>
+            <div id="studio-status"
+                style="text-align: center; margin-top: 1.5rem; color: #818cf8; font-family: monospace; display: none;">
+                <i data-lucide="loader-2" class="spin"></i> AI scraping global web and synthesizing script... (Deducts
+                50 requests)
+            </div>
+        </section>
+
+    </main>
+
+    <script>
+        lucide.createIcons();
+        let currentApiKey = null;
+
+        async function authenticateClient(e) {
+            e.preventDefault();
+            const btn = document.getElementById('login-btn');
+            const input = document.getElementById('api-key-input').value.trim();
+            if (!input) return;
+
+            btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:20px; height:20px;"></i>';
+            lucide.createIcons();
+
+            try {
+                // Secure Backend Validation Call
+                const res = await fetch('/api/v1/b2b/portal/metrics', {
+                    headers: { 'X-ANN-API-Key': input }
+                });
+
+                if (!res.ok) throw new Error("Invalid License Key");
+
+                const clientData = await res.json();
+
+                // Mount Dashboard Data
+                currentApiKey = input;
+                document.getElementById('client-greeting').innerText = `Welcome, ${clientData.client_name}`;
+                document.getElementById('client-tier').innerText = `${clientData.plan_tier} TIER`;
+                document.getElementById('quota-used').innerText = clientData.requests_used.toLocaleString();
+                document.getElementById('quota-max').innerText = clientData.monthly_quota.toLocaleString();
+
+                // Animate Progress Bar
+                const fillPercent = Math.min((clientData.requests_used / clientData.monthly_quota) * 100, 100);
+                setTimeout(() => { document.getElementById('quota-fill').style.width = `${fillPercent}%`; }, 100);
+
+                // Reveal UI natively
+                document.getElementById('login-screen').style.opacity = '0';
+                setTimeout(() => {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('portal-dashboard').style.display = 'block';
+                }, 500);
+
+            } catch (error) {
+                alert("Authentication Failed. Please verify your Stripe API Key.");
+                btn.innerHTML = 'Secure Login';
+            }
+        }
+
+        async function triggerCustomGeneration() {
+            const topic = document.getElementById('custom-topic').value;
+            if (!topic) return alert("Please enter a news topic.");
+
+            document.getElementById('studio-status').style.display = 'block';
+
+            try {
+                // Hit the Studio Endpoint
+                const res = await fetch(`/api/v1/b2b/portal/generate?topic=${encodeURIComponent(topic)}`, {
+                    method: 'POST',
+                    headers: { 'X-ANN-API-Key': currentApiKey } // Authorized Request
+                });
+
+                if (!res.ok) {
+                    const errorObj = await res.json();
+                    throw new Error(errorObj.detail || "Generation failed.");
+                }
+
+                const data = await res.json();
+                document.getElementById('studio-status').innerHTML = `<span style="color:#10b981;">✅ Generation Complete: ${data.script_id} delivered securely.</span>`;
+            } catch (e) {
+                document.getElementById('studio-status').innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
+            }
+        }
+
+        function logout() {
+            currentApiKey = null;
+            document.getElementById('login-screen').style.display = 'flex';
+            document.getElementById('login-screen').style.opacity = '1';
+            document.getElementById('portal-dashboard').style.display = 'none';
+            document.getElementById('api-key-input').value = '';
+        }
+
+        // Add CSS Spinner animation dynamically
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }`;
+        document.head.appendChild(style);
+    </script>
+</body>
+
+</html>
