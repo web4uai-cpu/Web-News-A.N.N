@@ -9,6 +9,7 @@
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@700;900&display=swap"
         rel="stylesheet">
     <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
             --bg-dark: #0a0a0f;
@@ -77,9 +78,9 @@
             border: 1px solid #2d2d44;
             color: #fff;
             border-radius: 12px;
-            font-family: monospace;
+            font-family: 'Inter', monospace;
             font-size: 1rem;
-            margin-bottom: 1.5rem;
+            margin-bottom: 1rem;
             outline: none;
             transition: border 0.3s;
         }
@@ -100,11 +101,21 @@
             border-radius: 12px;
             cursor: pointer;
             transition: all 0.3s;
+            margin-bottom: 1rem;
         }
 
         .btn-glow:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 20px var(--accent-glow);
+        }
+
+        .auth-switch {
+            color: #818cf8;
+            cursor: pointer;
+            font-size: 0.9rem;
+            text-decoration: underline;
+            background: none;
+            border: none;
         }
 
         /* ── Sidebar ── */
@@ -367,16 +378,21 @@
 
 <body>
 
-    <!-- SECURE LOGIN SCREEN -->
+    <!-- SECURE SUPABASE AUTH LOGIN SCREEN -->
     <div class="login-overlay" id="login-screen">
         <div class="login-box">
-            <h1>A.N.N.</h1>
-            <p>Enterprise API Access Portal</p>
-            <form onsubmit="authenticateClient(event)">
-                <input type="password" id="api-key-input" class="api-input"
-                    placeholder="X-ANN-API-Key (e.g. ann_sk_...)" required>
-                <button type="submit" class="btn-glow" id="login-btn">Secure Login</button>
+            <h1>A.N.N. Hub</h1>
+            <p>B2B Client Portal Access</p>
+            <form id="auth-form" onsubmit="handleAuth(event)">
+                <input type="email" id="auth-email" class="api-input" placeholder="Work Email" required
+                    autocomplete="email">
+                <input type="password" id="auth-password" class="api-input" placeholder="Password (8+ chars)" required
+                    autocomplete="current-password">
+                <button type="submit" class="btn-glow" id="login-btn">Secure Log In</button>
             </form>
+            <button class="auth-switch" onclick="toggleAuthMode()" id="auth-toggle">Don't have an account? Sign
+                up</button>
+            <div id="auth-error" style="color: #ef4444; margin-top: 1rem; font-size: 0.9rem; display: none;"></div>
         </div>
     </div>
 
@@ -461,32 +477,85 @@ ws.onopen = () => {
     <script>
         lucide.createIcons();
         let currentApiKey = null;
+        let isSignUpMode = false;
 
-        async function authenticateClient(e) {
+        // 🚀 Initialize Enterprise Supabase Client
+        const supabaseUrl = 'https://qixeuqtejgrzxotxhbfn.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeGV1cXRlamdyenhvdHhoYmZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODg5NzMsImV4cCI6MjA4OTU2NDk3M30.KkllcEzsUXu1j0bEQWG69BffQzuT1g3NSxQoKda2DJ0';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+
+        function toggleAuthMode() {
+            isSignUpMode = !isSignUpMode;
+            document.getElementById('login-btn').innerText = isSignUpMode ? 'Create Account' : 'Secure Log In';
+            document.getElementById('auth-toggle').innerText = isSignUpMode ? 'Already have an account? Log in' : "Don't have an account? Sign up";
+            document.getElementById('auth-error').style.display = 'none';
+        }
+
+        async function handleAuth(e) {
             e.preventDefault();
             const btn = document.getElementById('login-btn');
-            const input = document.getElementById('api-key-input').value.trim();
-            if (!input) return;
+            const email = document.getElementById('auth-email').value.trim();
+            const password = document.getElementById('auth-password').value;
+            const errorDiv = document.getElementById('auth-error');
 
+            errorDiv.style.display = 'none';
             btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:20px; height:20px;"></i>';
             lucide.createIcons();
 
             try {
+                let authResponse;
+                if (isSignUpMode) {
+                    authResponse = await supabase.auth.signUp({ email, password });
+                    if (authResponse.error) throw authResponse.error;
+                    alert("Account created successfully. Please check your email and log in.");
+                    toggleAuthMode();
+                    btn.innerHTML = 'Secure Log In';
+                    return;
+                } else {
+                    authResponse = await supabase.auth.signInWithPassword({ email, password });
+                    if (authResponse.error) throw authResponse.error;
+                }
+
+                // 🌐 User is Authenticated! Prompt for API License Key if this is their first time 
+                let stripeKey = prompt("Supabase Authentication Success! \n\nPlease enter your Stripe B2B API License Key (`ann_sk_...`) to mount your pipeline data:", "");
+                if (!stripeKey) throw new Error("A valid B2B API Key is required to access the dashboard.");
+
                 // Secure Backend Validation Call
                 const res = await fetch('/api/v1/b2b/portal/metrics', {
-                    headers: { 'X-ANN-API-Key': input }
+                    headers: { 'X-ANN-API-Key': stripeKey }
                 });
 
-                if (!res.ok) throw new Error("Invalid License Key");
+                if (!res.ok) throw new Error("The API key provided is not valid or is suspended.");
 
                 const clientData = await res.json();
 
                 // Mount Dashboard Data
-                currentApiKey = input;
-                document.getElementById('client-greeting').innerText = `Welcome, ${clientData.client_name}`;
+                currentApiKey = stripeKey;
+                document.getElementById('client-greeting').innerText = `Welcome, ${authResponse.data.user.email.split('@')[0]}`;
                 document.getElementById('client-tier').innerText = `${clientData.plan_tier} TIER`;
                 document.getElementById('quota-used').innerText = clientData.requests_used.toLocaleString();
                 document.getElementById('quota-max').innerText = clientData.monthly_quota.toLocaleString();
+
+                // 🔒 Tier Enforcement: Lock Studio UI dynamically
+                const studioPanel = document.querySelector('.studio-panel');
+                if (clientData.plan_tier !== 'enterprise') {
+                    studioPanel.style.position = 'relative';
+                    studioPanel.innerHTML += `
+                        <div style="position: absolute; inset: 0; background: rgba(18,18,28,0.85); backdrop-filter: blur(8px); border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
+                            <i data-lucide="lock" style="width: 48px; height: 48px; color: #818cf8; margin-bottom: 1rem;"></i>
+                            <h3 style="font-family: 'Outfit'; font-size: 1.5rem; margin-bottom: 0.5rem;">Enterprise Feature Locked</h3>
+                            <p style="color: #a0a0c0; max-width: 300px; text-align: center;">Upgrade your B2B subscription to unlock On-Demand AI Studio generations.</p>
+                            <button class="btn-glow" style="width: auto; padding: 0.75rem 2rem; margin-top: 1.5rem;" onclick="alert('Contact Sales to upgrade.')">Upgrade to Enterprise</button>
+                        </div>
+                    `;
+                    lucide.createIcons();
+                }
+
+                // 🌐 Connect to the Secure Authenticated Firehose (WebSocket)
+                const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+                const socket = new WebSocket(`${wsProto}//${window.location.host}/ws/breaking-news?api_key=${currentApiKey}`);
+                socket.onopen = () => console.log("🔒 Secured Firehose Connected.");
+                socket.onclose = () => console.error("Firehose Connection Rejected.");
 
                 // Animate Progress Bar
                 const fillPercent = Math.min((clientData.requests_used / clientData.monthly_quota) * 100, 100);
@@ -500,8 +569,9 @@ ws.onopen = () => {
                 }, 500);
 
             } catch (error) {
-                alert("Authentication Failed. Please verify your Stripe API Key.");
-                btn.innerHTML = 'Secure Login';
+                errorDiv.innerText = error.message;
+                errorDiv.style.display = 'block';
+                btn.innerHTML = isSignUpMode ? 'Create Account' : 'Secure Log In';
             }
         }
 
@@ -530,18 +600,18 @@ ws.onopen = () => {
             }
         }
 
-        function logout() {
+        async function logout() {
+            await supabase.auth.signOut();
             currentApiKey = null;
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-screen').style.opacity = '1';
             document.getElementById('portal-dashboard').style.display = 'none';
-            document.getElementById('api-key-input').value = '';
+            document.getElementById('auth-password').value = '';
         }
 
         // Add CSS Spinner animation dynamically
         const style = document.createElement('style');
         style.innerHTML = `@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }`;
-        document.head.appendChild(style);
     </script>
 </body>
 
