@@ -594,10 +594,12 @@
         }
 
         async function triggerCustomGeneration() {
-            const topic = document.getElementById('custom-topic').value;
+            const topic = document.getElementById('custom-topic').value.trim();
             if (!topic) return alert("Please enter a news topic.");
 
             document.getElementById('studio-status').style.display = 'block';
+            document.getElementById('studio-status').innerHTML = `<i data-lucide="loader-2" class="spin"></i> AI scraping global web and synthesizing script... (Deducts 50 requests)<br><span style="font-size: 0.8rem; color:#a0a0c0;">This process takes 2-5 minutes per video rendering.</span>`;
+            lucide.createIcons();
 
             try {
                 // Hit the Studio Endpoint
@@ -611,8 +613,7 @@
                     throw new Error(errorObj.detail || "Generation failed.");
                 }
 
-                const data = await res.json();
-                document.getElementById('studio-status').innerHTML = `<span style="color:#10b981;">✅ Generation Complete: ${data.script_id} delivered securely.</span>`;
+                // We leave the loader spinning until the WebSocket catches the "studio_delivery" event
             } catch (e) {
                 document.getElementById('studio-status').innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
             }
