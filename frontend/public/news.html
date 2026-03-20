@@ -59,6 +59,30 @@
     </div>
 
     <!-- ═══════════════════════════════════════════════
+         ENTERPRISE REVENUE MONETIZATION BANNERS 
+         ═══════════════════════════════════════════════ -->
+    <div style="width: 100%; max-width: 1200px; margin: 0 auto; padding: 1rem 2rem;">
+        <div
+            style="background: linear-gradient(135deg, rgba(99,102,241,0.15), rgba(139,92,246,0.15)); border: 1px solid rgba(139,92,246,0.4); border-radius: 12px; padding: 1.5rem; display: flex; align-items: center; justify-content: space-between; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+            <div>
+                <h3 style="margin: 0 0 0.5rem 0; color: #fff; font-size: 1.1rem; letter-spacing: 0.05em;">📡 Developer
+                    API & Enterprise Webhooks</h3>
+                <p style="margin: 0; color: #a0a0c0; font-size: 0.9rem;">Stream this real-time news data straight into
+                    your own app or trading algorithm.</p>
+            </div>
+            <button onclick="purchaseB2BKey()"
+                style="background: #6366f1; color: white; border: none; padding: 0.75rem 1.5rem; border-radius: 8px; font-weight: bold; cursor: pointer; transition: background 0.2s;">Purchase
+                API Key (Stripe)</button>
+        </div>
+
+        <!-- Passive Ad Slot (Google AdSense) -->
+        <div
+            style="margin-top: 1rem; width: 100%; height: 90px; background: #1a1a2e; border: 1px dashed #4b4b66; display: flex; align-items: center; justify-content: center; color: #6366f1; font-weight: bold; border-radius: 8px; font-size: 0.85rem; letter-spacing: 0.1em; cursor: pointer;">
+            [ SPONSORED ADVERTISEMENT SLOT - 728x90 ]
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
          HERO — FEATURED STORY + NEWS STUDIO
          ═══════════════════════════════════════════════ -->
     <section class="hero">
@@ -221,6 +245,33 @@
             origRender();
             const counter = document.getElementById('feed-count');
             if (counter) counter.textContent = `${state.filteredScripts.length} stories`;
+        };
+
+        // 1. Stripe Payment Gateway Trigger
+        async function purchaseB2BKey() {
+            try {
+                const res = await fetch('/api/v1/b2b/checkout?tier=pro&client_name=ExternalFirm', { method: 'POST' });
+                const data = await res.json();
+                if (data.checkout_url) window.location.href = data.checkout_url;
+            } catch (e) { alert("Payment API Offline."); }
+        }
+
+        // 2. Ultra-Fast WebSockets Stream
+        const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const socket = new WebSocket(`${wsProto}//${window.location.host}/ws/breaking-news`);
+        socket.onmessage = function (event) {
+            const article = JSON.parse(event.data);
+            // Append the new article into the state globally and re-render without reloading!
+            state.scripts.unshift(article);
+            applyFilters();
+
+            // Trigger a UI flash to indicate live push
+            const ticker = document.getElementById('ticker-label');
+            if (ticker) {
+                ticker.style.background = '#fff';
+                ticker.style.color = '#e53e3e';
+                setTimeout(() => { ticker.style = ''; }, 1000);
+            }
         };
     </script>
 </body>

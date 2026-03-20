@@ -98,6 +98,28 @@
                             }
                         ]
                     }
+                },
+                {
+                    "name": "B2B Stripe Subscriptions (Revenue)",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/b2b/checkout?tier=pro&client_name=ExternalFirm"
+                    }
+                },
+                {
+                    "name": "Stripe Webhook Delivery",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/webhooks/stripe"
+                    }
+                },
+                {
+                    "name": "Live WebSockets Stream",
+                    "request": {
+                        "method": "GET",
+                        "url": "ws://localhost:8000/ws/breaking-news",
+                        "description": "Connect to receive real-time news articles continuously."
+                    }
                 }
             ]
         },

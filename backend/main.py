@@ -212,6 +212,13 @@ async def process_raw_news(article: ArticleInput):
     try:
         script = await pipeline.process_single_article(article)
         script_store[script.id] = script
+        
+        # World-Class Real-Time Push
+        try:
+            await ws_manager.broadcast_news(script.model_dump())
+        except Exception as e:
+            log.error("websocket_broadcast_failed", error=str(e))
+            
         return script
     except Exception as e:
         log.error("process_news_failed", error=str(e))
@@ -643,6 +650,70 @@ async def list_b2b_clients(
             "active": c.is_active,
         } for c in clients
     ]
+
+# ── Enterprise Revenue (Stripe B2B) ────────────────────
+
+from services.billing import create_checkout_session, handle_stripe_webhook
+from fastapi import Request
+
+@app.post("/api/v1/b2b/checkout", tags=["Revenue Engine"])
+async def b2b_checkout(tier: str = Query("pro", description="standard, pro, enterprise"), client_name: str = Query(..., description="Your Company Name")):
+    """Redirects the client to Stripe to purchase an API key subscription."""
+    url_payload = await create_checkout_session(
+        tier, client_name, 
+        success_url=f"{settings.public_url}/news?payment=success", 
+        cancel_url=f"{settings.public_url}/news?payment=cancelled"
+    )
+    return url_payload
+
+@app.post("/api/v1/webhooks/stripe", tags=["Revenue Engine"])
+async def stripe_webhook(request: Request):
+    """Stripe webhook to auto-provision B2B API keys upon successful payment."""
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature", "")
+    return await handle_stripe_webhook(payload, sig_header)
+
+# ── High-Performance WebSocket Streaming ───────────────
+
+from fastapi import WebSocket, WebSocketDisconnect
+
+class ConnectionManager:
+    def __init__(self):
+        self.active_connections: list[WebSocket] = []
+
+    async def connect(self, websocket: WebSocket):
+        await websocket.accept()
+        self.active_connections.append(websocket)
+        log.info("websocket_client_connected", count=len(self.active_connections))
+
+    def disconnect(self, websocket: WebSocket):
+        self.active_connections.remove(websocket)
+        log.info("websocket_client_disconnected", count=len(self.active_connections))
+
+    async def broadcast_news(self, script_data: dict):
+        """Streams breaking news updates instantaneously to all active clients."""
+        for connection in self.active_connections:
+            try:
+                await connection.send_json(script_data)
+            except Exception:
+                pass
+
+ws_manager = ConnectionManager()
+
+@app.websocket("/ws/breaking-news")
+async def breaking_news_stream(websocket: WebSocket):
+    """
+    World-class real-time WebSocket connection.
+    Connects frontend clients instantly to the pipeline pulse without reloading.
+    """
+    await ws_manager.connect(websocket)
+    try:
+        while True:
+            # Idle wait; server pushes explicitly
+            data = await websocket.receive_text()
+    except WebSocketDisconnect:
+        ws_manager.disconnect(websocket)
+
 
 # ── Embeddable Widgets ─────────────────────────────────
 

@@ -23,9 +23,10 @@ Once the editorial process completes successfully, the pipeline triggers the Med
 * **Audio**: `elevenlabs_tts.py` invokes ElevenLabs voice cloning to generate ultra-realistic English and Hindi voiceovers.
 * **Video**: `heygen_video.py` transmits the scripts to HeyGen to synthesize artificial human anchors lip-syncing the broadcast.
 
-## 4. Distribution & Syndication (`backend/feeds/` & `backend/social/`)
-The final `BroadcastScript` entity is simultaneously blasted out to multiple channels:
+## 4. Distribution, Syndication & Streaming (`backend/feeds/` & `backend/social/` & `backend/main.py`)
+The final `BroadcastScript` entity is simultaneously blasted out using world-class distribution techniques:
+* **High-Performance WebSockets**: `main.py` utilizes FastAPI `WebSocket` routing to simultaneously push the generated `BroadcastScript` direct to the `frontend/public/news.html` dashboard natively. Browsers auto-render breaking news without needing to reload the webpage.
 * **Supabase Cloud Sync**: `supabase_client.py` pushes the DB record to a Supabase Postgres instance for worldwide Edge CDN delivery.
-* **Social Media Automations**: `social_scheduler.py` triggers `instagram_poster.py` (which uses Pillow to generate a branded 1080x1080 graphic card), `facebook_poster.py`, and `twitter_poster.py` via asynchronous tasks.
-* **Webhooks**: `webhook.py` looks up active Enterprise B2B subscribers in the local `b2b_database.py` and dispatches asynchronous HTTP POST requests encapsulating the broadcast natively to external systems.
-* **RSS / Atom Feeds**: The scripts are automatically served as statically-parseable XML objects to `http://localhost:8000/feed/rss` and `http://localhost:8000/feed/atom`.
+* **Social Media Automations**: `social_scheduler.py` triggers `instagram_poster.py` (which uses Pillow to generate a branded 1080x1080 graphic card), `facebook_poster.py`, and `twitter_poster.py`.
+* **RSS / Atom Feeds**: The scripts are automatically served as statically-parseable XML objects to `http://localhost:8000/feed/rss` and `/feed/atom`.
+* **Stripe Revenue & Webhooks**: The system natively exposes Checkout mechanisms in `backend/services/billing.py`. Clients pay via Stripe -> Stripe Webhook hits A.N.N. -> Auto-generates an enterprise API Key via SQLAlchemy Alembic Migrations -> Dispatches raw JSON news to their own servers via `webhook.py`.
