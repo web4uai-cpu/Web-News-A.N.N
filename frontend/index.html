@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="A.N.N. — AI News Network Dashboard. Autonomous multi-agent AI news broadcast system.">
+    <title>A.N.N. — AI News Network | Command Center</title>
+    <link rel="stylesheet" href="/static/css/styles.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📡</text></svg>">
+</head>
+<body>
+
+    <!-- ═══ Header ═════════════════════════════════════ -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <div class="logo-icon">📡</div>
+                <div>
+                    <div class="logo-text">A.N.N.</div>
+                    <div class="logo-subtitle">AI News Network</div>
+                </div>
+            </a>
+
+            <div class="header-live">
+                <span class="live-dot"></span>
+                <span>LIVE</span>
+            </div>
+
+            <div class="header-status">
+                <div class="status-badge">
+                    <span class="status-dot" id="api-status-dot"></span>
+                    <span id="api-status-text">Connecting...</span>
+                </div>
+                <div class="status-badge">
+                    🕐 <span id="header-uptime">--</span>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ═══ Main Content ══════════════════════════════ -->
+    <main class="main">
+
+        <!-- ── Stats Grid ──────────────────────────── -->
+        <section class="stats-grid">
+            <div class="stat-card fade-in-up fade-in-up-delay-1">
+                <div class="stat-label">Scripts Generated</div>
+                <div class="stat-value" id="stat-scripts">0</div>
+                <div class="stat-delta">Ready for broadcast</div>
+            </div>
+            <div class="stat-card fade-in-up fade-in-up-delay-2">
+                <div class="stat-label">Articles Processed</div>
+                <div class="stat-value" id="stat-articles">0</div>
+                <div class="stat-delta">Across all sources</div>
+            </div>
+            <div class="stat-card fade-in-up fade-in-up-delay-3">
+                <div class="stat-label">Active Jobs</div>
+                <div class="stat-value" id="stat-jobs">0</div>
+                <div class="stat-delta">Pipeline runs</div>
+            </div>
+            <div class="stat-card fade-in-up fade-in-up-delay-4">
+                <div class="stat-label">Uptime</div>
+                <div class="stat-value" id="stat-uptime">--</div>
+                <div class="stat-delta">Since last restart</div>
+            </div>
+        </section>
+
+        <!-- ── Pipeline Control ────────────────────── -->
+        <section class="control-panel fade-in-up" style="animation-delay: 0.25s">
+            <div class="section-header">
+                <h2 class="section-title">
+                    <span class="section-icon">🎛️</span>
+                    Pipeline Control
+                </h2>
+            </div>
+
+            <div class="controls-row">
+                <div class="control-group">
+                    <label class="control-label" for="source-select">Source</label>
+                    <select class="control-select" id="source-select">
+                        <option value="newsapi">📰 NewsAPI</option>
+                        <option value="financial">📈 Alpha Vantage (Finance)</option>
+                        <option value="gdelt">🌍 GDELT (Geopolitics)</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="category-select">Category</label>
+                    <select class="control-select" id="category-select">
+                        <option value="general">General</option>
+                        <option value="business">Business</option>
+                        <option value="technology">Technology</option>
+                        <option value="science">Science</option>
+                        <option value="health">Health</option>
+                        <option value="sports">Sports</option>
+                        <option value="entertainment">Entertainment</option>
+                        <option value="politics">Politics</option>
+                        <option value="finance">Finance</option>
+                        <option value="geopolitics">Geopolitics</option>
+                    </select>
+                </div>
+
+                <div class="control-group">
+                    <label class="control-label" for="query-input">Search Query</label>
+                    <input type="text" class="control-input" id="query-input" 
+                           placeholder="e.g. AI regulation, climate summit...">
+                </div>
+
+                <div class="control-group" style="max-width: 100px">
+                    <label class="control-label" for="max-articles">Max Articles</label>
+                    <input type="number" class="control-input" id="max-articles" 
+                           value="5" min="1" max="20">
+                </div>
+
+                <div class="control-group" style="max-width: 140px; justify-content: flex-end;">
+                    <label class="control-label" style="display: flex; align-items: center; gap: 6px; cursor: pointer;">
+                        <input type="checkbox" id="generate-media" style="accent-color: var(--accent-primary);">
+                        Generate Media
+                    </label>
+                </div>
+
+                <div class="control-group" style="max-width: 180px; justify-content: flex-end;">
+                    <button class="btn btn-primary" id="run-pipeline-btn" onclick="runPipeline()">
+                        🚀 Run Pipeline
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pipeline Steps -->
+            <div id="pipeline-steps" class="pipeline-steps" style="margin-top: 1rem;">
+                <span class="pipeline-step">📋 Queue</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">📡 Ingest</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">🔍 Extract</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">✍️ Script</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">🌐 Translate</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">🎙️ Audio</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">🎬 Video</span>
+                <span class="pipeline-arrow">→</span>
+                <span class="pipeline-step">✅ Done</span>
+            </div>
+
+            <!-- Progress Bar -->
+            <div class="progress-bar-container">
+                <div class="progress-bar-fill" id="progress-bar" style="width: 0%"></div>
+            </div>
+        </section>
+
+        <!-- ── Content Grid ────────────────────────── -->
+        <div class="content-grid">
+
+            <!-- Scripts Panel -->
+            <section>
+                <div class="section-header">
+                    <h2 class="section-title">
+                        <span class="section-icon">📝</span>
+                        Broadcast Scripts
+                    </h2>
+                    <button class="btn btn-secondary btn-sm" onclick="loadScripts()">
+                        🔄 Refresh
+                    </button>
+                </div>
+                <div class="scripts-container" id="scripts-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📡</div>
+                        <div class="empty-state-title">No Scripts Yet</div>
+                        <div class="empty-state-desc">
+                            Run the pipeline or process a manual article to generate your first broadcast script.
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Right Panel: Log + Manual Input -->
+            <section>
+                <!-- Manual Article Input -->
+                <div class="control-panel" style="margin-bottom: 1.5rem;">
+                    <div class="section-header">
+                        <h2 class="section-title">
+                            <span class="section-icon">✏️</span>
+                            Manual Article Input
+                        </h2>
+                    </div>
+                    <div style="display: flex; flex-direction: column; gap: 0.75rem;">
+                        <div class="control-group">
+                            <label class="control-label" for="manual-url">Source URL (optional)</label>
+                            <input type="url" class="control-input" id="manual-url" 
+                                   placeholder="https://example.com/article...">
+                        </div>
+                        <div class="control-group">
+                            <label class="control-label" for="manual-text">Article Text</label>
+                            <textarea class="control-input" id="manual-text" rows="5" 
+                                      placeholder="Paste the full article text here (min 50 characters)..."
+                                      style="resize: vertical; font-family: var(--font-sans);"></textarea>
+                        </div>
+                        <button class="btn btn-primary" onclick="processManualArticle()">
+                            ⚡ Process Article
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Activity Log -->
+                <div class="log-panel">
+                    <div class="log-header">
+                        <h2 class="section-title" style="font-size: 0.95rem;">
+                            <span class="section-icon">📊</span>
+                            Activity Log
+                        </h2>
+                        <button class="btn btn-secondary btn-sm" onclick="clearLogs()">
+                            Clear
+                        </button>
+                    </div>
+                    <div class="log-body" id="log-body">
+                        <div class="log-entry">
+                            <span class="log-time">--:--:--</span>
+                            <span class="log-level info">INFO</span>
+                            <span class="log-msg">Waiting for connection to A.N.N. backend...</span>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ═══ Toast Container ═══════════════════════════ -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <!-- ═══ Scripts ════════════════════════════════════ -->
+    <script src="/static/js/app.js"></script>
+    <script>
+        // Clear logs function
+        function clearLogs() {
+            const logBody = document.getElementById('log-body');
+            if (logBody) logBody.innerHTML = '';
+            state.logs = [];
+            addLog('info', 'Logs cleared');
+        }
+    </script>
+</body>
+</html>

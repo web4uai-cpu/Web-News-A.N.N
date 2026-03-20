@@ -1,0 +1,124 @@
+{
+    "info": {
+        "name": "A.N.N. API Suite",
+        "description": "Complete endpoint mapping for the AI News Network API.",
+        "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+    },
+    "item": [
+        {
+            "name": "Ingestion",
+            "item": [
+                {
+                    "name": "Trigger NewsAPI Ingestion",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/ingest/newsapi",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"category\": \"technology\",\n  \"max_articles\": 5\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Trigger Financial Ingestion",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/ingest/financial",
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"symbols\": [\"AAPL\", \"NVDA\"]\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Pipeline Execution",
+            "item": [
+                {
+                    "name": "Run Full Autonomous Pipeline",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/pipeline/run?generate_media=false&source=newsapi"
+                    }
+                },
+                {
+                    "name": "Check Pipeline Status",
+                    "request": {
+                        "method": "GET",
+                        "url": "http://localhost:8000/api/v1/pipeline/status/<<job_id>>"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "B2B Admin Control",
+            "item": [
+                {
+                    "name": "Create B2B Client",
+                    "request": {
+                        "method": "POST",
+                        "url": "http://localhost:8000/api/v1/admin/clients",
+                        "header": [
+                            {
+                                "key": "X-Admin-Token",
+                                "value": "superadmin123"
+                            }
+                        ],
+                        "body": {
+                            "mode": "raw",
+                            "raw": "{\n  \"client_name\": \"Demo Corp\",\n  \"plan_tier\": \"enterprise\",\n  \"webhook_url\": \"https://httpbin.org/post\"\n}",
+                            "options": {
+                                "raw": {
+                                    "language": "json"
+                                }
+                            }
+                        }
+                    }
+                },
+                {
+                    "name": "Premium B2B JSON Feed",
+                    "request": {
+                        "method": "GET",
+                        "url": "http://localhost:8000/api/v1/b2b/feed/json",
+                        "header": [
+                            {
+                                "key": "X-ANN-API-Key",
+                                "value": "<<ann_apiKey>>"
+                            }
+                        ]
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Public Feeds",
+            "item": [
+                {
+                    "name": "Get RSS Feed",
+                    "request": {
+                        "method": "GET",
+                        "url": "http://localhost:8000/feed/rss"
+                    }
+                },
+                {
+                    "name": "Get Atom Feed",
+                    "request": {
+                        "method": "GET",
+                        "url": "http://localhost:8000/feed/atom"
+                    }
+                }
+            ]
+        }
+    ]
+}

@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="A.N.N. — AI News Network. Autonomous AI-powered news broadcasts in English and Hindi. Breaking news, world events, technology, finance, and more.">
+    <meta name="theme-color" content="#080810">
+    <title>A.N.N. — AI News Network | Live Broadcasts</title>
+    <link rel="stylesheet" href="/public/news.css">
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📺</text></svg>">
+</head>
+
+<body>
+
+    <!-- ═══════════════════════════════════════════════
+         TOP NAVIGATION
+         ═══════════════════════════════════════════════ -->
+    <nav class="topnav">
+        <div class="topnav-inner">
+            <a href="/news" class="nav-brand">
+                <div class="nav-brand-icon">ANN</div>
+                <div>
+                    <div class="nav-brand-name">A.N.N.</div>
+                    <div class="nav-brand-tag">AI News Network</div>
+                </div>
+            </a>
+
+            <div class="nav-live">
+                <span class="nav-live-dot"></span>
+                LIVE
+            </div>
+
+            <div class="nav-categories" id="nav-categories">
+                <!-- Rendered by JS -->
+            </div>
+
+            <div class="nav-time" id="nav-clock">--</div>
+        </div>
+    </nav>
+
+    <!-- ═══════════════════════════════════════════════
+         BREAKING NEWS TICKER
+         ═══════════════════════════════════════════════ -->
+    <div class="ticker-bar">
+        <div class="ticker-label">⚡ BREAKING</div>
+        <div class="ticker-track">
+            <div class="ticker-content" id="ticker-content">
+                <span class="ticker-item">A.N.N. — AI News Network is now live</span>
+                <span class="ticker-separator">◆</span>
+                <span class="ticker-item">Autonomous AI-powered broadcast system operational</span>
+                <span class="ticker-separator">◆</span>
+                <span class="ticker-item">Multi-lingual broadcasts available in English and Hindi</span>
+                <span class="ticker-separator">◆</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         HERO — FEATURED STORY + NEWS STUDIO
+         ═══════════════════════════════════════════════ -->
+    <section class="hero">
+        <!-- Main Featured Story -->
+        <article class="hero-main" id="hero-main">
+            <div class="hero-studio-frame">
+                <div class="studio-network-bug">A.N.N. HD</div>
+                <div class="studio-rec-badge">
+                    <span class="studio-rec-dot"></span>
+                    REC
+                </div>
+                <div class="studio-anchor">
+                    <div class="studio-anchor-avatar">🤖</div>
+                    <div class="studio-anchor-name">AI Anchor</div>
+                    <div class="studio-anchor-status">
+                        <span class="nav-live-dot"></span>
+                        ON AIR
+                    </div>
+                </div>
+            </div>
+            <div class="hero-text-overlay">
+                <div class="hero-breaking-badge">⚡ FEATURED</div>
+                <h1 class="hero-headline" id="hero-headline">A.N.N. — AI News Network</h1>
+                <p class="hero-excerpt" id="hero-excerpt">
+                    Your autonomous AI-powered news broadcast system is online.
+                    Use the admin dashboard to ingest news sources and generate broadcast scripts.
+                    Content will appear here automatically.
+                </p>
+                <div class="hero-meta">
+                    <span class="hero-meta-cat cat-bg-general" id="hero-category">SYSTEM</span>
+                    <span id="hero-time">Just now</span>
+                    <span>•</span>
+                    <span id="hero-duration">--</span>
+                </div>
+            </div>
+        </article>
+
+        <!-- Sidebar — Latest Headlines List -->
+        <aside class="hero-sidebar">
+            <div class="hero-sidebar-header">
+                📋 Latest Headlines
+            </div>
+            <div id="hero-sidebar-stories">
+                <div class="sidebar-story">
+                    <div class="sidebar-story-cat cat-general">SYSTEM</div>
+                    <div class="sidebar-story-title">Waiting for news scripts...</div>
+                    <div class="sidebar-story-time">Run pipeline from dashboard</div>
+                </div>
+                <div class="sidebar-story">
+                    <div class="sidebar-story-cat cat-technology">GETTING STARTED</div>
+                    <div class="sidebar-story-title">Open the Admin Dashboard to ingest news</div>
+                    <div class="sidebar-story-time"><a href="/"
+                            style="color: var(--accent-secondary); text-decoration: none;">Go to Dashboard →</a></div>
+                </div>
+                <div class="sidebar-story">
+                    <div class="sidebar-story-cat cat-science">INFO</div>
+                    <div class="sidebar-story-title">Scripts auto-refresh every 30 seconds</div>
+                    <div class="sidebar-story-time">Live feed enabled</div>
+                </div>
+            </div>
+        </aside>
+    </section>
+
+    <!-- ═══════════════════════════════════════════════
+         NEWS FEED
+         ═══════════════════════════════════════════════ -->
+    <div class="section-band">
+        <div class="section-divider">
+            <span class="section-divider-label">📰 Latest News Feed</span>
+            <span class="section-divider-line"></span>
+            <span class="section-divider-label" id="feed-count">0 stories</span>
+        </div>
+    </div>
+
+    <div class="news-grid" id="news-grid">
+        <div class="empty-feed">
+            <div class="empty-feed-icon">📡</div>
+            <h3 class="empty-feed-title">No Broadcasts Available</h3>
+            <p class="empty-feed-desc">
+                The AI newsroom is standing by. Go to the
+                <a href="/" style="color: var(--accent-secondary);">Admin Dashboard</a>
+                to run the pipeline and generate broadcast scripts.
+            </p>
+            <a href="/" class="btn btn-red">🎛️ Open Dashboard</a>
+        </div>
+    </div>
+
+    <!-- ═══════════════════════════════════════════════
+         FOOTER
+         ═══════════════════════════════════════════════ -->
+    <footer class="site-footer">
+        <div class="footer-brand">
+            📺 A.N.N. — AI News Network
+        </div>
+        <div class="footer-links">
+            <a href="/" class="footer-link">Admin Dashboard</a>
+            <a href="/docs" class="footer-link">API Docs</a>
+            <a href="/health" class="footer-link">System Health</a>
+        </div>
+        <div class="footer-status">
+            <span class="footer-status-dot"></span>
+            All systems operational
+        </div>
+    </footer>
+
+    <!-- ═══════════════════════════════════════════════
+         SCRIPT READER MODAL
+         ═══════════════════════════════════════════════ -->
+    <div class="reader-overlay" id="reader-overlay">
+        <div class="reader-modal">
+            <div class="reader-header">
+                <div class="reader-title-area">
+                    <div class="reader-category cat-general" id="reader-category">NEWS</div>
+                    <h2 class="reader-headline" id="reader-headline">Headline</h2>
+                    <div class="reader-meta">
+                        <span id="reader-time">--</span>
+                        <span>•</span>
+                        <span id="reader-words">-- words</span>
+                        <span>•</span>
+                        <span id="reader-duration">~--s</span>
+                    </div>
+                </div>
+                <button class="reader-close" onclick="closeReader()">✕</button>
+            </div>
+
+            <div class="reader-body">
+                <div class="reader-lang-tabs">
+                    <button class="reader-lang-tab active" data-lang="en" onclick="switchReaderLang(this, 'en')">
+                        🇬🇧 English
+                    </button>
+                    <button class="reader-lang-tab" data-lang="hi" onclick="switchReaderLang(this, 'hi')">
+                        🇮🇳 हिन्दी
+                    </button>
+                </div>
+                <div class="reader-script-text" id="reader-script-text">
+                    Script content will appear here...
+                </div>
+            </div>
+
+            <div class="reader-footer">
+                <div class="reader-stats">
+                    <span class="reader-stat">📝 <span id="reader-words-footer">--</span></span>
+                    <span class="reader-stat">⏱️ Broadcast ready</span>
+                </div>
+                <div class="reader-actions">
+                    <button class="btn btn-glass btn-sm" id="copy-btn" onclick="copyReaderScript()">
+                        📋 Copy Script
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ Scripts ════════════════════════════════════ -->
+    <script src="/public/news.js"></script>
+    <script>
+        // Update feed counter when filtered
+        const origRender = renderNewsFeed;
+        renderNewsFeed = function () {
+            origRender();
+            const counter = document.getElementById('feed-count');
+            if (counter) counter.textContent = `${state.filteredScripts.length} stories`;
+        };
+    </script>
+</body>
+
+</html>
