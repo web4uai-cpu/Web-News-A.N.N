@@ -23,7 +23,16 @@ else:
     elif DATABASE_URL.startswith("postgresql://"):
         DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-engine = create_async_engine(DATABASE_URL, echo=False)
+engine_kwargs = {"echo": False}
+if "postgresql" in DATABASE_URL:
+    engine_kwargs.update({
+        "pool_size": int(os.getenv("DB_POOL_SIZE", "20")),
+        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+        "pool_timeout": 30,
+        "pool_recycle": 1800,
+    })
+
+engine = create_async_engine(DATABASE_URL, **engine_kwargs)
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 Base = declarative_base()

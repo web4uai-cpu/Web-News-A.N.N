@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", description="Supabase API Key")
     database_url: str = Field(default="", description="Direct Postgres Connection URL")
 
+    # ── Background Worker & Cache ───────────────────────
+    redis_url: str | None = Field(default=None, description="Redis connection URL")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"

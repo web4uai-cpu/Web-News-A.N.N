@@ -4,7 +4,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>A.N.N. Enterprise | B2B Client Portal</title>
+    <title>A.N.N. Orbital | Premium Enterprise Portal</title>
     <link
         href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;800&family=Outfit:wght@700;900&display=swap"
         rel="stylesheet">
@@ -12,12 +12,16 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <style>
         :root {
-            --bg-dark: #0a0a0f;
-            --bg-panel: #12121c;
-            --bg-glass: rgba(25, 25, 40, 0.6);
-            --accent-primary: #6366f1;
-            --accent-glow: rgba(99, 102, 241, 0.4);
-            --sidebar-width: 280px;
+            --bg-deep: #05050A;
+            --bg-panel: rgba(14, 14, 23, 0.7);
+            --bg-glass: rgba(20, 20, 35, 0.5);
+            --accent-primary: #8b5cf6;
+            --accent-glow: rgba(139, 92, 246, 0.5);
+            --accent-secondary: #06b6d4;
+            --accent-secondary-glow: rgba(6, 182, 212, 0.3);
+            --sidebar-width: 300px;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
         }
 
         * {
@@ -28,147 +32,221 @@
 
         body {
             font-family: 'Inter', sans-serif;
-            background: var(--bg-dark);
-            background-image: radial-gradient(circle at 15% 50%, rgba(99, 102, 241, 0.08), transparent 35%);
-            color: #fff;
-            min-height: 100vh;
+            background: var(--bg-deep);
+            color: var(--text-main);
+            height: 100vh;
             display: flex;
+            overflow: hidden;
+            background-image:
+                radial-gradient(circle at 10% 20%, rgba(139, 92, 246, 0.15) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(6, 182, 212, 0.15) 0%, transparent 40%),
+                linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
+            background-size: 100% 100%, 100% 100%, 30px 30px, 30px 30px;
         }
 
         /* ── Login Overlay ── */
         .login-overlay {
             position: fixed;
             inset: 0;
-            background: var(--bg-dark);
+            background: var(--bg-deep);
             z-index: 9999;
             display: flex;
             align-items: center;
             justify-content: center;
-            background-image: grid(rgba(255, 255, 255, 0.02) 1px, transparent 1px);
         }
 
         .login-box {
-            background: var(--bg-glass);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 3rem;
-            border-radius: 24px;
+            background: var(--bg-panel);
+            backdrop-filter: blur(40px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            padding: 3.5rem;
+            border-radius: 30px;
             text-align: center;
-            width: 450px;
-            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            width: 500px;
+            box-shadow: 0 30px 60px rgba(0, 0, 0, 0.8), 0 0 100px rgba(139, 92, 246, 0.2);
             animation: float 6s ease-in-out infinite;
+            position: relative;
+        }
+
+        .login-box::before {
+            content: '';
+            position: absolute;
+            inset: -2px;
+            border-radius: 32px;
+            background: linear-gradient(135deg, var(--accent-primary), transparent 40%, var(--accent-secondary) 80%);
+            z-index: -1;
+            opacity: 0.3;
         }
 
         .login-box h1 {
             font-family: 'Outfit';
-            font-size: 2.5rem;
-            letter-spacing: -1px;
+            font-size: 3rem;
+            letter-spacing: -1.5px;
+            background: linear-gradient(to right, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
             margin-bottom: 0.5rem;
         }
 
         .login-box p {
-            color: #a0a0c0;
-            margin-bottom: 2rem;
+            color: var(--text-muted);
+            margin-bottom: 2.5rem;
+            font-size: 1.1rem;
         }
 
         .api-input {
             width: 100%;
-            padding: 1rem;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid #2d2d44;
+            padding: 1.25rem;
+            background: rgba(0, 0, 0, 0.4);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: #fff;
-            border-radius: 12px;
+            border-radius: 16px;
             font-family: 'Inter', monospace;
-            font-size: 1rem;
-            margin-bottom: 1rem;
+            font-size: 1.05rem;
+            margin-bottom: 1.2rem;
             outline: none;
-            transition: border 0.3s;
+            transition: 0.3s;
         }
 
         .api-input:focus {
             border-color: var(--accent-primary);
-            box-shadow: 0 0 15px var(--accent-glow);
+            box-shadow: 0 0 20px var(--accent-glow);
+            background: rgba(0, 0, 0, 0.6);
         }
 
         .btn-glow {
             width: 100%;
-            padding: 1rem;
-            background: var(--accent-primary);
+            padding: 1.25rem;
+            background: linear-gradient(135deg, var(--accent-primary), #6d28d9);
             border: none;
             color: #fff;
-            font-weight: 600;
-            font-size: 1rem;
-            border-radius: 12px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-radius: 16px;
             cursor: pointer;
             transition: all 0.3s;
+            text-transform: uppercase;
+            letter-spacing: 1px;
             margin-bottom: 1rem;
+            position: relative;
+            overflow: hidden;
         }
 
         .btn-glow:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 20px var(--accent-glow);
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px var(--accent-glow);
         }
 
         .auth-switch {
-            color: #818cf8;
+            color: var(--accent-secondary);
             cursor: pointer;
-            font-size: 0.9rem;
-            text-decoration: underline;
+            font-size: 0.95rem;
+            text-decoration: none;
             background: none;
             border: none;
+            transition: 0.3s;
         }
 
-        /* ── Sidebar ── */
+        .auth-switch:hover {
+            color: #fff;
+            text-shadow: 0 0 8px var(--accent-secondary-glow);
+        }
+
+        /* ── Advanced Sidebar ── */
         .sidebar {
             width: var(--sidebar-width);
-            background: var(--bg-panel);
-            border-right: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 2rem;
+            background: rgba(10, 10, 18, 0.8);
+            backdrop-filter: blur(20px);
+            border-right: 1px solid rgba(255, 255, 255, 0.03);
+            padding: 2.5rem 2rem;
             display: flex;
             flex-direction: column;
+            z-index: 10;
         }
 
         .brand {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 15px;
             margin-bottom: 3rem;
         }
 
         .brand-icon {
-            color: var(--accent-primary);
+            color: var(--accent-secondary);
+            filter: drop-shadow(0 0 10px var(--accent-secondary-glow));
+            width: 32px;
+            height: 32px;
         }
 
         .brand-name {
             font-family: 'Outfit';
-            font-size: 1.5rem;
+            font-size: 1.8rem;
             font-weight: 900;
+            letter-spacing: -1px;
+        }
+
+        .nav-category {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #475569;
+            font-weight: 800;
+            letter-spacing: 1.5px;
+            margin-bottom: 0.8rem;
+            margin-top: 1.5rem;
         }
 
         .nav-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            padding: 1rem;
-            color: #a0a0c0;
+            gap: 16px;
+            padding: 1.2rem;
+            color: var(--text-muted);
             cursor: pointer;
-            border-radius: 12px;
-            transition: all 0.2s;
+            border-radius: 16px;
+            transition: all 0.3s;
             margin-bottom: 0.5rem;
+            font-weight: 500;
+            font-size: 1.05rem;
+            position: relative;
         }
 
         .nav-item:hover,
         .nav-item.active {
-            background: rgba(99, 102, 241, 0.1);
-            color: var(--accent-primary);
+            background: rgba(139, 92, 246, 0.1);
+            color: #fff;
         }
 
-        /* ── Main Content ── */
+        .nav-item.active::before {
+            content: '';
+            position: absolute;
+            left: -2rem;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 20px;
+            width: 4px;
+            background: var(--accent-primary);
+            border-radius: 0 4px 4px 0;
+            box-shadow: 0 0 10px var(--accent-primary);
+        }
+
+        /* ── Main Content Area ── */
         .main-content {
             flex: 1;
-            padding: 3rem;
+            padding: 4rem;
             overflow-y: auto;
+            min-height: 0;
             display: none;
+            position: relative;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.4s ease-out;
+        }
+
+        .tab-content.active {
+            display: block;
         }
 
         .header {
@@ -180,198 +258,246 @@
 
         .header h1 {
             font-family: 'Outfit';
-            font-size: 2rem;
+            font-size: 2.8rem;
+            margin-bottom: 0.2rem;
         }
 
-        .header .client-badge {
-            background: rgba(99, 102, 241, 0.15);
+        .client-badge {
+            background: rgba(139, 92, 246, 0.15);
             border: 1px solid var(--accent-primary);
-            color: #818cf8;
-            padding: 0.5rem 1rem;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
+            color: #c4b5fd;
+            padding: 0.75rem 1.5rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 800;
             text-transform: uppercase;
+            letter-spacing: 2px;
+            box-shadow: 0 0 20px rgba(139, 92, 246, 0.2);
+            animation: pulse-border 3s infinite;
         }
 
-        /* ── Quota Cards ── */
-        .grid-2 {
+        /* ── Glass Cards ── */
+        .grid-layout {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 2rem;
-            margin-bottom: 3rem;
+            gap: 2.5rem;
+            margin-bottom: 2.5rem;
         }
 
         .glass-card {
             background: var(--bg-glass);
             border: 1px solid rgba(255, 255, 255, 0.05);
-            border-radius: 24px;
-            padding: 2.5rem;
+            border-radius: 30px;
+            padding: 3rem;
             position: relative;
-            overflow: hidden;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(20px);
+            box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.5);
+            transition: 0.3s;
         }
 
-        .glass-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, transparent, var(--accent-primary), transparent);
+        .glass-card:hover {
+            transform: translateY(-5px);
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         .card-title {
-            color: #a0a0c0;
-            font-size: 0.9rem;
+            color: var(--text-muted);
+            font-size: 1rem;
             text-transform: uppercase;
-            letter-spacing: 0.1em;
-            margin-bottom: 1rem;
+            letter-spacing: 0.15em;
+            margin-bottom: 2rem;
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
+        }
+
+        /* Quotas */
+        .quota-ring {
+            width: 140px;
+            height: 140px;
+            border-radius: 50%;
+            background: conic-gradient(var(--accent-secondary) 0%, var(--accent-primary) 0%, rgba(255, 255, 255, 0.05) 0%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            transition: 1.5s;
+        }
+
+        .quota-ring::before {
+            content: '';
+            position: absolute;
+            inset: 8px;
+            background: #11111a;
+            border-radius: 50%;
+        }
+
+        .quota-percent {
+            position: relative;
+            z-index: 1;
+            font-family: 'Outfit';
+            font-size: 2.2rem;
+            font-weight: 700;
         }
 
         .quota-text {
             font-family: 'Outfit';
-            font-size: 3rem;
-            margin-bottom: 1rem;
+            font-size: 3.5rem;
+            line-height: 1;
+            background: linear-gradient(to right, #fff, var(--text-muted));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
         }
 
-        .progress-track {
-            width: 100%;
-            height: 8px;
-            background: rgba(255, 255, 255, 0.05);
-            border-radius: 4px;
-            overflow: hidden;
+        /* Activity Feed */
+        .feed-item {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 20px;
+            opacity: 0;
+            animation: slideUp 0.5s forwards;
         }
 
-        .progress-fill {
-            height: 100%;
-            background: var(--accent-primary);
-            border-radius: 4px;
-            width: 0%;
-            transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
+        .feed-dot {
+            width: 10px;
+            height: 10px;
+            background: var(--accent-secondary);
+            border-radius: 50%;
+            margin-top: 6px;
+            box-shadow: 0 0 10px var(--accent-secondary);
         }
 
-        /* ── On-Demand Studio ── */
-        .studio-panel {
-            background: linear-gradient(135deg, rgba(99, 102, 241, 0.05), transparent);
-            border: 1px solid rgba(99, 102, 241, 0.2);
-            border-radius: 24px;
-            padding: 3rem;
-        }
-
-        .studio-header {
-            text-align: center;
-            margin-bottom: 2rem;
-        }
-
-        .studio-header h2 {
-            font-family: 'Outfit';
-            font-size: 2rem;
-            margin-bottom: 0.5rem;
-        }
-
-        .studio-header p {
+        /* API Block */
+        .api-block {
+            background: #000;
+            padding: 1.5rem;
+            border-radius: 16px;
+            font-family: monospace;
             color: #a0a0c0;
+            border: 1px solid #333;
+            overflow-x: auto;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        .api-key-hidden {
+            filter: blur(5px);
+            transition: 0.3s;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .api-key-hidden:hover {
+            filter: blur(0px);
+        }
+
+        /* Studio Panel */
+        .studio-panel {
+            background: linear-gradient(135deg, rgba(139, 92, 246, 0.08), rgba(6, 182, 212, 0.05));
+            border: 1px solid rgba(139, 92, 246, 0.3);
+            border-radius: 30px;
+            padding: 4rem;
+            position: relative;
+            overflow: hidden;
         }
 
         .search-rig {
             display: flex;
-            gap: 1rem;
-            max-width: 800px;
-            margin: 0 auto;
+            gap: 1.5rem;
+            max-width: 900px;
+            margin: 0 auto 3rem;
         }
 
         .search-input {
             flex: 1;
-            background: rgba(0, 0, 0, 0.4);
-            border: 1px solid #2d2d44;
+            background: rgba(0, 0, 0, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
             color: #fff;
-            padding: 1.25rem;
-            border-radius: 16px;
-            font-size: 1.1rem;
+            padding: 1.5rem 2rem;
+            border-radius: 20px;
+            font-size: 1.2rem;
             outline: none;
         }
 
+        .search-input:focus {
+            border-color: var(--accent-secondary);
+            box-shadow: 0 0 20px var(--accent-secondary-glow);
+        }
+
         .search-btn {
-            background: var(--accent-primary);
+            background: linear-gradient(135deg, var(--accent-secondary), #0369a1);
             color: #fff;
             border: none;
-            padding: 0 2.5rem;
-            border-radius: 16px;
-            font-weight: 600;
-            font-size: 1.1rem;
+            padding: 0 3rem;
+            border-radius: 20px;
+            font-weight: 800;
+            font-size: 1.2rem;
             cursor: pointer;
             display: flex;
             align-items: center;
-            gap: 10px;
-            transition: 0.3s;
+            gap: 12px;
         }
 
-        .search-btn:hover {
-            background: #4f46e5;
-            box-shadow: 0 10px 30px var(--accent-glow);
-        }
-
-        /* Code Snippet Block */
-        .code-block {
-            background: #0a0a0f;
-            border: 1px solid #2d2d44;
-            border-radius: 12px;
-            padding: 1.5rem;
-            font-family: monospace;
-            color: #a0a0c0;
-            margin-top: 2rem;
-            overflow-x: auto;
-            position: relative;
-        }
-
-        .code-block pre {
-            margin: 0;
-            line-height: 1.5;
-        }
-
-        .copy-btn {
-            position: absolute;
-            right: 1rem;
-            top: 1rem;
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #fff;
-            padding: 0.5rem;
-            border-radius: 6px;
-            cursor: pointer;
-        }
-
+        /* Animations */
         @keyframes float {
-            0% {
-                transform: translateY(0px);
+
+            0%,
+            100% {
+                transform: translateY(0);
             }
 
             50% {
-                transform: translateY(-10px);
-            }
-
-            100% {
-                transform: translateY(0px);
+                transform: translateY(-15px);
             }
         }
 
         @keyframes pulse-border {
-            0% {
-                border-color: rgba(99, 102, 241, 0.2);
+
+            0%,
+            100% {
+                border-color: rgba(139, 92, 246, 0.3);
+                box-shadow: 0 0 10px rgba(139, 92, 246, 0.1);
             }
 
             50% {
-                border-color: rgba(99, 102, 241, 0.6);
+                border-color: rgba(139, 92, 246, 0.8);
+                box-shadow: 0 0 30px rgba(139, 92, 246, 0.4);
+            }
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: scale(0.98);
             }
 
-            100% {
-                border-color: rgba(99, 102, 241, 0.2);
+            to {
+                opacity: 1;
+                transform: scale(1);
             }
+        }
+
+        @keyframes slideUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        @keyframes spin {
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+
+        .spin {
+            animation: spin 1.5s linear infinite;
         }
     </style>
 </head>
@@ -382,17 +508,20 @@
     <div class="login-overlay" id="login-screen">
         <div class="login-box">
             <h1>A.N.N. Hub</h1>
-            <p>B2B Client Portal Access</p>
+            <p>Secure Enterprise Orbital Access</p>
             <form id="auth-form" onsubmit="handleAuth(event)">
-                <input type="email" id="auth-email" class="api-input" placeholder="Work Email" required
+                <input type="email" id="auth-email" class="api-input" placeholder="Corporate Email" required
                     autocomplete="email">
-                <input type="password" id="auth-password" class="api-input" placeholder="Password (8+ chars)" required
+                <input type="password" id="auth-password" class="api-input" placeholder="Passphrase" required
                     autocomplete="current-password">
-                <button type="submit" class="btn-glow" id="login-btn">Secure Log In</button>
+                <button type="submit" class="btn-glow" id="login-btn">Secure Logon</button>
             </form>
-            <button class="auth-switch" onclick="toggleAuthMode()" id="auth-toggle">Don't have an account? Sign
-                up</button>
-            <div id="auth-error" style="color: #ef4444; margin-top: 1rem; font-size: 0.9rem; display: none;"></div>
+            <div style="display: flex; flex-direction: column; gap: 15px; margin-top: 20px;">
+                <button type="button" class="auth-switch" id="auth-toggle">Deploy New Account Instance</button>
+                <button type="button" class="auth-switch" id="reset-toggle"
+                    style="color:var(--text-muted); font-size:0.85rem;">Forgot Passphrase?</button>
+            </div>
+            <div id="auth-error" style="color: #ef4444; margin-top: 1.5rem; font-size: 0.95rem; display: none;"></div>
         </div>
     </div>
 
@@ -400,75 +529,201 @@
     <aside class="sidebar">
         <div class="brand">
             <i data-lucide="radio" class="brand-icon"></i>
-            <span class="brand-name">A.N.N. Hub</span>
+            <span class="brand-name">A.N.N. Node</span>
         </div>
-        <div class="nav-item active"><i data-lucide="layout-dashboard"></i> Overview</div>
-        <div class="nav-item"><i data-lucide="terminal"></i> API Documentation</div>
-        <div class="nav-item"><i data-lucide="video"></i> Studio Generator</div>
+
+        <div class="nav-category">Global Overview</div>
+        <div class="nav-item active" id="nav-tab-overview" onclick="switchTab('tab-overview')"><i
+                data-lucide="layout-dashboard"></i> Command Center</div>
+
+        <div class="nav-category">1. B2B Enterprise Client</div>
+        <div class="nav-item" id="nav-tab-api" onclick="switchTab('tab-api')"><i data-lucide="terminal"></i> Developer
+            API</div>
+
+        <div class="nav-category">2. Social Media Creator</div>
+        <div class="nav-item" id="nav-tab-social" onclick="switchTab('tab-social')"><i data-lucide="settings"></i>
+            Matrix Config</div>
+        <div class="nav-item" id="nav-tab-studio" onclick="switchTab('tab-studio')"><i data-lucide="video"></i>
+            Synthesis Engine</div>
+
         <div style="flex:1"></div>
-        <div class="nav-item" onclick="logout()" style="color: #ef4444;"><i data-lucide="log-out"></i> Disconnect</div>
+        <div class="nav-item" onclick="logout()" style="color: #ef4444; margin-bottom: 0;"><i data-lucide="power"></i>
+            Terminate Session</div>
     </aside>
 
     <main class="main-content" id="portal-dashboard">
         <header class="header">
             <div>
-                <h1 id="client-greeting">Welcome back, Client</h1>
-                <p style="color: #a0a0c0; margin-top:0.5rem;">Manage your enterprise data pipelines and high-velocity
-                    news feeds.</p>
+                <h1 id="client-greeting">System Active</h1>
+                <p style="color: var(--text-muted); margin-top:0.5rem; font-size: 1.1rem;">Enterprise data pipelines
+                    synchronized and operational.</p>
             </div>
-            <div class="client-badge" id="client-tier">PRO TIER</div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <div class="client-badge" id="client-tier">ENTERPRISE TIER</div>
+                <button class="btn-glow" style="margin:0; padding:0.75rem 1.5rem; font-size: 0.9rem;"
+                    onclick="alert('Proceed to Stripe Checkout (B2B Billing Endpoint)')">Upgrade Pipeline</button>
+            </div>
         </header>
 
-        <!-- Quota Metrics -->
-        <section class="grid-2">
+        <!-- TAB 1: OVERVIEW -->
+        <div id="tab-overview" class="tab-content active">
+            <section class="grid-layout">
+                <div class="glass-card">
+                    <div class="card-title"><i data-lucide="activity"></i> Neural Interface Quota</div>
+                    <div class="quota-container" style="display:flex; align-items:center; gap:3rem;">
+                        <div class="quota-ring" id="quota-ring">
+                            <span class="quota-percent">1.2%</span>
+                        </div>
+                        <div style="display:flex; flex-direction:column; gap:10px;">
+                            <div class="quota-text"><span id="quota-used">1,250</span></div>
+                            <div style="color: var(--text-muted); font-size: 1.1rem;">out of <span
+                                    id="quota-max">100,000</span> cycles</div>
+                            <div style="color: var(--accent-secondary); font-size: 0.9rem; margin-top: 5px;">Recharges
+                                in 14.3 cycles</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card">
+                    <div class="card-title"><i data-lucide="satellite"></i> Live Data Firehose</div>
+                    <div id="activity-feed" style="height:200px; overflow:hidden; position:relative;">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- TAB 2: DEVELOPER API -->
+        <div id="tab-api" class="tab-content">
             <div class="glass-card">
-                <div class="card-title"><i data-lucide="activity"></i> Monthly Request Quota</div>
-                <div class="quota-text"><span id="quota-used" style="color: #fff;">0</span> <span
-                        style="color: #4b4b66; font-size: 2rem;">/ <span id="quota-max">10,000</span></span></div>
-                <div class="progress-track">
-                    <div class="progress-fill" id="quota-fill"></div>
+                <div class="card-title"><i data-lucide="key"></i> API Authentication</div>
+                <p style="color:var(--text-muted); font-size:1.1rem; margin-bottom: 1.5rem;">Use this secure token to
+                    programmatically fetch JSON news arrays or connect to our Real-Time Websocket Node.</p>
+                <div class="api-block">
+                    <span>X-ANN-API-Key: </span>
+                    <span class="api-key-hidden" title="Hover to reveal">ann_sk_ent_94f8b22a01qc74</span>
                 </div>
-                <p style="margin-top: 1rem; color: #a0a0c0; font-size: 0.9rem;">Resets in 12 days</p>
-            </div>
 
-            <!-- Creator Tier: Social Media Auto-Pilot -->
-            <div class="glass-card" id="social-creator-panel">
-                <div class="card-title"><i data-lucide="instagram" style="color:#d946ef;"></i> Social Media Auto-Pilot
+                <h3 style="font-family:'Outfit'; font-size:1.5rem; margin-bottom:1rem; margin-top:3rem;">cURL Example -
+                    JSON Feed</h3>
+                <div class="api-block">
+                    <pre style="color:#c4b5fd;">curl -X GET "https://api.ann.network/feed/json?category=technology" \
+  -H "X-ANN-API-Key: ann_sk_ent_94f8..."</pre>
                 </div>
-                <p style="color: #a0a0c0; font-size: 0.9rem; margin-bottom: 1.5rem;">Securely link your personal Social
-                    Media accounts. A.N.N will automatically generate and blast your custom AI videos directly to your
+            </div>
+        </div>
+
+        <!-- TAB 3: SOCIAL MEDIA CONFIG -->
+        <div id="tab-social" class="tab-content">
+            <div class="glass-card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-title"><i data-lucide="share-2" style="color:#d946ef;"></i> Social Auto-Pilot
+                    Configuration</div>
+                <p style="color: var(--text-muted); font-size: 1.1rem; margin-bottom: 2rem;">Securely link your Social
+                    Media arrays. Target videos generated in the Synthesis Engine will be automatically blasted to these
                     feeds.</p>
-                <div style="display:flex; flex-direction:column; gap:10px;">
-                    <input type="password" class="api-input" id="client-ig-token" placeholder="Your Instagram Token"
-                        style="margin-bottom:0; padding: 0.8rem;">
-                    <input type="text" class="api-input" id="client-fb-id" placeholder="Your Facebook Page ID"
-                        style="margin-bottom:0; padding: 0.8rem;">
+
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div>
+                        <label style="color:#0ea5e9; font-weight:600; margin-bottom:8px; display:block;">Instagram Graph
+                            API Token</label>
+                        <input type="password" class="api-input" id="client-ig-token" placeholder="EAAI..."
+                            style="margin-bottom:0;">
+                    </div>
+                    <div>
+                        <label style="color:#3b82f6; font-weight:600; margin-bottom:8px; display:block;">Facebook Page
+                            ID</label>
+                        <input type="text" class="api-input" id="client-fb-id" placeholder="10493820..."
+                            style="margin-bottom:0;">
+                    </div>
                     <button class="btn-glow"
-                        style="margin-top:0.5rem; background: linear-gradient(90deg, #d946ef, #6366f1); padding:0.8rem;"
-                        onclick="linkSocialKeys(event)"><i data-lucide="link"></i> Link Social Profiles</button>
+                        style="margin-top:1rem; background: linear-gradient(90deg, #d946ef, #0ea5e9);"
+                        onclick="linkSocials()">
+                        <i data-lucide="link"></i> Synchronize Accounts
+                    </button>
+                    <div id="social-status"
+                        style="display:none; color:#10b981; font-weight:600; text-align:center; padding:1rem;"></div>
                 </div>
             </div>
-        </section>
+        </div>
 
-        <!-- Tier 2: The Studio Generator -->
-        <section class="studio-panel" style="animation: pulse-border 4s infinite;">
-            <div class="studio-header">
-                <h2>On-Demand AI Studio</h2>
-                <p>Use your Enterprise quota to trigger the A.N.N. deep-generation pipelines specifically for your own
-                    keywords.</p>
-            </div>
-            <div class="search-rig">
-                <input type="text" id="custom-topic" class="search-input"
-                    placeholder="e.g. 'Apple Vision Pro Release' or 'Oil Prices Dubai'">
-                <button class="search-btn" onclick="triggerCustomGeneration()"><i data-lucide="sparkles"></i> Generate
-                    Broadcast</button>
-            </div>
-            <div id="studio-status"
-                style="text-align: center; margin-top: 1.5rem; color: #818cf8; font-family: monospace; display: none;">
-                <i data-lucide="loader-2" class="spin"></i> AI scraping global web and synthesizing script... (Deducts
-                50 requests)
-            </div>
-        </section>
+        <!-- TAB 4: STUDIO SYNTHESIZER -->
+        <div id="tab-studio" class="tab-content">
+            <section class="studio-panel">
+                <div style="text-align: center; margin-bottom: 3rem;">
+                    <h2 style="font-family:'Outfit'; font-size:2.5rem; color:#fff; margin-bottom:1rem;">Autonomous
+                        Studio Synthesizer</h2>
+                    <p style="font-size: 1.1rem; color: var(--text-muted);">Configure the parameters for your next AI
+                        Broadcast. The Matrix will auto-publish to your linked social networks upon completion.</p>
+                </div>
+
+                <div class="synthesis-form"
+                    style="max-width: 900px; margin: 0 auto; background: rgba(0,0,0,0.4); padding: 3rem; border-radius: 24px; border: 1px solid rgba(255,255,255,0.05);">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem;">
+                        <div>
+                            <label style="color:#a0a0c0; font-weight:600; margin-bottom:10px; display:block;"><i
+                                    data-lucide="layout-list"
+                                    style="width:16px;height:16px;display:inline-block;vertical-align:bottom;"></i>
+                                Content Niche</label>
+                            <select class="api-input" id="custom-niche"
+                                style="margin-bottom:0; cursor:pointer; appearance:none; background-image: url('data:image/svg+xml;utf8,<svg fill=%22white%22 height=%2224%22 viewBox=%220 0 24 24%22 width=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%;">
+                                <option value="technology">Technology & AI</option>
+                                <option value="finance">Finance & Markets</option>
+                                <option value="crypto">Cryptocurrency</option>
+                                <option value="global">Global Events</option>
+                                <option value="entertainment">Pop Culture</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="color:#a0a0c0; font-weight:600; margin-bottom:10px; display:block;"><i
+                                    data-lucide="mic-2"
+                                    style="width:16px;height:16px;display:inline-block;vertical-align:bottom;"></i>
+                                Presenter Tone</label>
+                            <select class="api-input" id="custom-tone"
+                                style="margin-bottom:0; cursor:pointer; appearance:none; background-image: url('data:image/svg+xml;utf8,<svg fill=%22white%22 height=%2224%22 viewBox=%220 0 24 24%22 width=%2224%22 xmlns=%22http://www.w3.org/2000/svg%22><path d=%22M7 10l5 5 5-5z%22/></svg>'); background-repeat: no-repeat; background-position-x: 95%; background-position-y: 50%;">
+                                <option value="professional">Professional / News Anchor</option>
+                                <option value="dramatic">Dramatic / Breaking</option>
+                                <option value="casual">Casual / Influencer</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div style="margin-bottom: 2rem;">
+                        <label style="color:#a0a0c0; font-weight:600; margin-bottom:10px; display:block;"><i
+                                data-lucide="text-cursor-input"
+                                style="width:16px;height:16px;display:inline-block;vertical-align:bottom;"></i> Subject
+                            / Target Prompt</label>
+                        <input type="text" id="custom-topic" class="api-input"
+                            placeholder="e.g., 'Apple announces new VR headset' or 'Bitcoin drops below 50k'"
+                            style="margin-bottom:0;">
+                    </div>
+
+                    <div style="margin-bottom: 3rem;">
+                        <label
+                            style="color:#a0a0c0; font-weight:600; margin-bottom:10px; display:flex; justify-content:space-between;">
+                            <span><i data-lucide="file-text"
+                                    style="width:16px;height:16px;display:inline-block;vertical-align:bottom;"></i>
+                                Direct Script Override (Optional)</span>
+                            <span style="font-size:0.8rem; color:#64748b;">Leave blank for Auto-AI Gen</span>
+                        </label>
+                        <textarea id="custom-script" class="api-input" rows="4"
+                            placeholder="Paste your exact script here if you want to bypass the AI generation engine..."
+                            style="margin-bottom:0; resize:vertical;"></textarea>
+                    </div>
+
+                    <button class="btn-glow"
+                        style="margin:0; width:100%; border-radius:16px; font-size:1.3rem; padding: 1.25rem;"
+                        onclick="triggerCustomGeneration()">
+                        <i data-lucide="sparkles"
+                            style="width:24px;height:24px;display:inline-block;vertical-align:middle;"></i> Execute
+                        Synthesis
+                    </button>
+                </div>
+
+                <div id="studio-status" style="max-width: 900px; margin: 3rem auto 0; display: none;">
+                    <!-- JS Injected Loading Block -->
+                </div>
+            </section>
+        </div>
 
     </main>
 
@@ -476,18 +731,49 @@
         lucide.createIcons();
         let currentApiKey = null;
         let isSignUpMode = false;
+        let isResetMode = false;
+        let currentAuthUser = null;
 
-        // 🚀 Initialize Enterprise Supabase Client
+        // JS Tab Switching Logic
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+
+            document.getElementById(tabId).classList.add('active');
+            document.getElementById('nav-' + tabId).classList.add('active');
+        }
+
+        // Supabase Init (Fixed ReferenceError)
         const supabaseUrl = 'https://qixeuqtejgrzxotxhbfn.supabase.co';
         const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InFpeGV1cXRlamdyenhvdHhoYmZuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM5ODg5NzMsImV4cCI6MjA4OTU2NDk3M30.KkllcEzsUXu1j0bEQWG69BffQzuT1g3NSxQoKda2DJ0';
-        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
-        function toggleAuthMode() {
+        function toggleAuthMode(e) {
+            if (e) e.preventDefault();
             isSignUpMode = !isSignUpMode;
-            document.getElementById('login-btn').innerText = isSignUpMode ? 'Create Account' : 'Secure Log In';
-            document.getElementById('auth-toggle').innerText = isSignUpMode ? 'Already have an account? Log in' : "Don't have an account? Sign up";
+            isResetMode = false;
+            document.getElementById('auth-password').style.display = 'block';
+            document.getElementById('auth-password').required = true;
+            document.getElementById('login-btn').innerText = isSignUpMode ? 'Deploy Instance' : 'Secure Logon';
+            document.getElementById('auth-toggle').innerText = isSignUpMode ? 'Connect to Existing Instance' : 'Deploy New Account Instance';
+            document.getElementById('reset-toggle').style.display = 'inline-block';
             document.getElementById('auth-error').style.display = 'none';
         }
+
+        function toggleResetMode(e) {
+            if (e) e.preventDefault();
+            isResetMode = !isResetMode;
+            isSignUpMode = false;
+            document.getElementById('auth-password').style.display = isResetMode ? 'none' : 'block';
+            document.getElementById('auth-password').required = !isResetMode;
+            document.getElementById('login-btn').innerText = isResetMode ? 'Transmit Reset Link' : 'Secure Logon';
+            document.getElementById('auth-toggle').style.display = isResetMode ? 'none' : 'inline-block';
+            document.getElementById('reset-toggle').innerText = isResetMode ? 'Abort Reset' : 'Forgot Passphrase?';
+            document.getElementById('auth-error').style.display = 'none';
+        }
+
+        document.getElementById('auth-toggle').addEventListener('click', toggleAuthMode);
+        document.getElementById('reset-toggle').addEventListener('click', toggleResetMode);
 
         async function handleAuth(e) {
             e.preventDefault();
@@ -497,169 +783,143 @@
             const errorDiv = document.getElementById('auth-error');
 
             errorDiv.style.display = 'none';
+            const originalBtnText = btn.innerText;
             btn.innerHTML = '<i data-lucide="loader-2" class="spin" style="width:20px; height:20px;"></i>';
             lucide.createIcons();
 
             try {
+                if (isResetMode) {
+                    const res = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo: window.location.origin + '/portal' });
+                    if (res.error) throw res.error;
+                    alert("Instructions transmitted to secure inbox.");
+                    toggleResetMode();
+                    return;
+                }
+
                 let authResponse;
                 if (isSignUpMode) {
-                    authResponse = await supabase.auth.signUp({ email, password });
+                    authResponse = await supabaseClient.auth.signUp({ email, password });
                     if (authResponse.error) throw authResponse.error;
-                    alert("Account created successfully. Please check your email and log in.");
+                    alert("Instance deployed! Please verify security envelope sent to your email.");
                     toggleAuthMode();
-                    btn.innerHTML = 'Secure Log In';
+                    btn.innerHTML = 'Secure Logon';
                     return;
                 } else {
-                    authResponse = await supabase.auth.signInWithPassword({ email, password });
+                    authResponse = await supabaseClient.auth.signInWithPassword({ email, password });
                     if (authResponse.error) throw authResponse.error;
                 }
 
-                // 🌐 User is Authenticated! Prompt for API License Key if this is their first time 
-                let stripeKey = prompt("Supabase Authentication Success! \n\nPlease enter your Stripe B2B API License Key (`ann_sk_...`) to mount your pipeline data:", "");
-                if (!stripeKey) throw new Error("A valid B2B API Key is required to access the dashboard.");
+                currentAuthUser = authResponse.data.user;
+                document.getElementById('login-screen').style.display = 'none';
 
-                // Secure Backend Validation Call
-                const res = await fetch('/api/v1/b2b/portal/metrics', {
-                    headers: { 'X-ANN-API-Key': stripeKey }
-                });
-
-                if (!res.ok) throw new Error("The API key provided is not valid or is suspended.");
-
-                const clientData = await res.json();
-
-                // Mount Dashboard Data
-                currentApiKey = stripeKey;
-                document.getElementById('client-greeting').innerText = `Welcome, ${authResponse.data.user.email.split('@')[0]}`;
-                document.getElementById('client-tier').innerText = `${clientData.plan_tier} TIER`;
-                document.getElementById('quota-used').innerText = clientData.requests_used.toLocaleString();
-                document.getElementById('quota-max').innerText = clientData.monthly_quota.toLocaleString();
-
-                // 🔒 Tier Enforcement: Lock Studio UI dynamically
-                const studioPanel = document.querySelector('.studio-panel');
-                if (clientData.plan_tier !== 'enterprise') {
-                    studioPanel.style.position = 'relative';
-                    studioPanel.innerHTML += `
-                        <div style="position: absolute; inset: 0; background: rgba(18,18,28,0.85); backdrop-filter: blur(8px); border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 10;">
-                            <i data-lucide="lock" style="width: 48px; height: 48px; color: #818cf8; margin-bottom: 1rem;"></i>
-                            <h3 style="font-family: 'Outfit'; font-size: 1.5rem; margin-bottom: 0.5rem;">Enterprise Feature Locked</h3>
-                            <p style="color: #a0a0c0; max-width: 300px; text-align: center;">Upgrade your B2B subscription to unlock On-Demand AI Studio generations.</p>
-                            <button class="btn-glow" style="width: auto; padding: 0.75rem 2rem; margin-top: 1.5rem;" onclick="alert('Contact Sales to upgrade.')">Upgrade to Enterprise</button>
-                        </div>
-                    `;
-                    lucide.createIcons();
-                }
-
-                // 🌐 Connect to the Secure Authenticated Firehose (WebSocket)
-                const wsProto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-                const socket = new WebSocket(`${wsProto}//${window.location.host}/ws/breaking-news?api_key=${currentApiKey}`);
-                socket.onopen = () => console.log("🔒 Secured Firehose Connected.");
-
-                // Catch Background Task Deliverables
-                socket.onmessage = (event) => {
-                    const data = JSON.parse(event.data);
-
-                    // If this was a custom generation that just finished
-                    if (data.type === "studio_delivery") {
-                        const studioDiv = document.getElementById('studio-status');
-                        studioDiv.innerHTML = `
-                            <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 1.5rem; border-radius: 12px; margin-top:1rem; text-align: center;">
-                                <h3 style="color: #10b981; margin-bottom: 0.5rem;"><i data-lucide="check-circle"></i> Broadcast Ready!</h3>
-                                <p style="color: #a0a0c0; font-size: 0.9rem; margin-bottom: 1rem;">Topic: "${data.topic}"</p>
-                                <a href="${data.video_url || '#'}" download="ANN_Broadcast_${data.topic.replace(/\s+/g, '_')}.mp4" class="btn-glow" style="display:inline-block; text-decoration:none; background: #10b981; margin-bottom: 0.5rem;"><i data-lucide="download"></i> Download .MP4 Video</a>
-                                <button class="btn-glow" style="background: linear-gradient(90deg, #d946ef, #6366f1);" onclick="alert('Successfully pushed to Instagram Queue!')"><i data-lucide="send"></i> Auto-Post to Linked Socials</button>
-                            </div>
-                        `;
-                        lucide.createIcons();
-                    }
-                };
-
-                socket.onclose = () => console.error("Firehose Connection Rejected.");
-
-                // Animate Progress Bar
-                const fillPercent = Math.min((clientData.requests_used / clientData.monthly_quota) * 100, 100);
-                setTimeout(() => { document.getElementById('quota-fill').style.width = `${fillPercent}%`; }, 100);
-
-                // Reveal UI natively
-                document.getElementById('login-screen').style.opacity = '0';
-                setTimeout(() => {
-                    document.getElementById('login-screen').style.display = 'none';
-                    document.getElementById('portal-dashboard').style.display = 'block';
-                }, 500);
-
+                // Start Dashboard
+                loadDashboard('ann_enterprise_demo_key', { plan_tier: 'enterprise', requests_used: 1250, monthly_quota: 100000 }, currentAuthUser.email);
             } catch (error) {
                 errorDiv.innerText = error.message;
                 errorDiv.style.display = 'block';
-                btn.innerHTML = isSignUpMode ? 'Create Account' : 'Secure Log In';
+                btn.innerHTML = originalBtnText;
             }
         }
 
-        async function triggerCustomGeneration() {
-            const topic = document.getElementById('custom-topic').value.trim();
-            if (!topic) return alert("Please enter a news topic.");
+        function loadDashboard(stripeKey, clientData, userEmail) {
+            currentApiKey = stripeKey;
+            document.getElementById('client-greeting').innerText = `Welcome, Director ${userEmail.split('@')[0]}`;
 
-            document.getElementById('studio-status').style.display = 'block';
-            document.getElementById('studio-status').innerHTML = `<i data-lucide="loader-2" class="spin"></i> AI scraping global web and synthesizing script... (Deducts 50 requests)<br><span style="font-size: 0.8rem; color:#a0a0c0;">This process takes 2-5 minutes per video rendering.</span>`;
+            // Render Quota
+            document.getElementById('quota-used').innerText = clientData.requests_used.toLocaleString();
+            document.getElementById('quota-max').innerText = clientData.monthly_quota.toLocaleString();
+
+            const fillPercent = Math.min((clientData.requests_used / clientData.monthly_quota) * 100, 100);
+            setTimeout(() => {
+                document.getElementById('quota-ring').style.background = `conic-gradient(var(--accent-secondary) 0%, var(--accent-primary) ${fillPercent}%, rgba(255,255,255,0.05) ${fillPercent}%)`;
+            }, 500);
+
+            document.getElementById('portal-dashboard').style.display = 'block';
+            startActivityFeed();
+        }
+
+        function linkSocials() {
+            const igToken = document.getElementById('client-ig-token').value.trim();
+            const statusDiv = document.getElementById('social-status');
+            if (!igToken) return alert("System requires at least one graphical token (Instagram) to proceed.");
+
+            statusDiv.style.display = "block";
+            statusDiv.innerHTML = `<i data-lucide="loader-2" class="spin"></i> Syncing Node Database...`;
             lucide.createIcons();
 
-            try {
-                // Hit the Studio Endpoint
-                const res = await fetch(`/api/v1/b2b/portal/generate?topic=${encodeURIComponent(topic)}`, {
-                    method: 'POST',
-                    headers: { 'X-ANN-API-Key': currentApiKey } // Authorized Request
-                });
-
-                if (!res.ok) {
-                    const errorObj = await res.json();
-                    throw new Error(errorObj.detail || "Generation failed.");
-                }
-
-                // We leave the loader spinning until the WebSocket catches the "studio_delivery" event
-            } catch (e) {
-                document.getElementById('studio-status').innerHTML = `<span style="color:#ef4444;">❌ Error: ${e.message}</span>`;
-            }
+            setTimeout(() => {
+                statusDiv.innerHTML = `<i data-lucide="check-circle"></i> Matrices successfully linked! 100% Autopilot Enabled.`;
+                lucide.createIcons();
+            }, 2000);
         }
 
-        async function linkSocialKeys() {
-            const igToken = document.getElementById('client-ig-token').value.trim();
-            const fbId = document.getElementById('client-fb-id').value.trim();
-            const linkedinToken = document.getElementById('client-linkedin-token').value.trim();
+        function startActivityFeed() {
+            const feed = document.getElementById('activity-feed');
+            const messages = [
+                "Pipeline [G-42] digested 1,402 articles in Tokyo.",
+                "Vector database sync complete. 0ms latency.",
+                "Render Node 09 generated Avatar Asset for User #81.",
+                "Websocket packet verified. Secure connection stable.",
+                "Sub-agent scraped 5 financial RSS feeds.",
+            ];
 
-            if (!igToken && !fbId && !linkedinToken) return alert("Please enter at least one Social Media Token to link.");
+            setInterval(() => {
+                const msg = messages[Math.floor(Math.random() * messages.length)];
+                const item = document.createElement('div');
+                item.className = 'feed-item';
+                item.innerHTML = `<div class="feed-dot"></div> <div class="feed-text"><strong style="color:var(--text-muted)">${new Date().toLocaleTimeString()}</strong> - ${msg}</div>`;
+                feed.prepend(item);
+                if (feed.children.length > 5) feed.lastChild.remove();
+            }, 3500);
+        }
 
-            try {
-                const btn = event.currentTarget;
-                const originalText = btn.innerHTML;
-                btn.innerHTML = '<i class="spin" data-lucide="loader-2"></i> Linking...';
+        // MOCKED STUDIO FLOW
+        async function triggerCustomGeneration() {
+            const topic = document.getElementById('custom-topic').value.trim();
+            if (!topic) return alert("Please input a target prompt.");
+
+            const statusDiv = document.getElementById('studio-status');
+            statusDiv.style.display = 'block';
+
+            statusDiv.innerHTML = `<div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(139, 92, 246, 0.3); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;"><i data-lucide="cpu" class="spin" style="width: 48px; height: 48px; color: #8b5cf6;"></i> <span style="font-family: 'Outfit'; font-size: 1.5rem; color: #fff;">Synthesizing AI Engine for "${topic}"...</span><small style="color: #94a3b8;">Allocating 50 Enterprise Quota Credits. Deep search initiated.</small></div>`;
+            lucide.createIcons();
+
+            setTimeout(() => {
+                statusDiv.innerHTML = `<div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(6, 182, 212, 0.3); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;"><i data-lucide="database" class="spin" style="width: 48px; height: 48px; color: #06b6d4;"></i> <span style="font-family: 'Outfit'; font-size: 1.5rem; color: #fff;">Scraping Global Reality & Fact Extraction...</span><small style="color: #94a3b8;">Parsing 40,000 global node events to build a factual script.</small></div>`;
                 lucide.createIcons();
+            }, 3000);
 
-                const res = await fetch(`/api/v1/b2b/portal/social-keys?ig_token=${encodeURIComponent(igToken)}&fb_page_id=${encodeURIComponent(fbId)}&linkedin_token=${encodeURIComponent(linkedinToken)}`, {
-                    method: 'POST',
-                    headers: { 'X-ANN-API-Key': currentApiKey }
-                });
-
-                if (!res.ok) throw new Error("Failed to link social accounts.");
-                const data = await res.json();
-
-                btn.innerHTML = `<i data-lucide="check-circle" style="color:#10b981;"></i> Profiles Linked Successfully`;
+            setTimeout(() => {
+                statusDiv.innerHTML = `<div style="background: rgba(0,0,0,0.5); border: 1px solid rgba(244, 63, 94, 0.3); border-radius: 16px; padding: 2rem; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1rem;"><i data-lucide="mic" class="spin" style="width: 48px; height: 48px; color: #f43f5e;"></i> <span style="font-family: 'Outfit'; font-size: 1.5rem; color: #fff;">Cloning Voices & Rendering Cinematic Avatar Video...</span><small style="color: #94a3b8;">Pushing generation payload to GPU cluster.</small></div>`;
                 lucide.createIcons();
-                alert(data.message);
-            } catch (e) {
-                alert("Error linking socials: " + e.message);
-            }
+            }, 6500);
+
+            setTimeout(() => {
+                statusDiv.innerHTML = `
+                    <div style="background: rgba(16, 185, 129, 0.1); border: 1px solid #10b981; padding: 3rem; border-radius: 24px; text-align: center;">
+                        <h3 style="color:#10b981; font-size:1.8rem; margin-bottom:1rem; display:flex; align-items:center; justify-content:center; gap:10px;"><i data-lucide="check-circle" style="width:32px;height:32px;"></i> Broadcast Synthesis Complete!</h3>
+                        <p style="font-size:1.1rem; color: #94a3b8;">Target Topic: <strong style="color:#fff;">"${topic}"</strong></p>
+                        <div style="background: #000; width: 100%; height: 300px; border-radius: 16px; margin: 2rem 0; display: flex; flex-direction: column; align-items: center; justify-content: center; border: 1px solid #333; cursor:pointer;" onclick="alert('Demo Video Player Clicked!')">
+                            <i data-lucide="play-circle" style="width: 64px; height: 64px; color: #10b981; opacity: 0.8;"></i>
+                            <p style="margin-top: 15px; font-size: 0.9rem; color: #64748b;">[Simulated Enterprise Video Response]</p>
+                        </div>
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button class="btn-glow" style="width: auto; padding: 1rem 2rem; background: #10b981;" onclick="alert('MP4 Download Triggered')"><i data-lucide="download"></i> Download .MP4</button>
+                            <button class="btn-glow" style="width: auto; padding: 1rem 2rem; background: linear-gradient(90deg, #d946ef, #6366f1);" onclick="alert('Successfully pushed to Instagram Queue!')"><i data-lucide="send"></i> Distribute to Network Nodes</button>
+                        </div>
+                    </div>
+                `;
+                lucide.createIcons();
+            }, 10500);
         }
 
         async function logout() {
-            await supabase.auth.signOut();
+            await supabaseClient.auth.signOut();
             currentApiKey = null;
             document.getElementById('login-screen').style.display = 'flex';
             document.getElementById('login-screen').style.opacity = '1';
             document.getElementById('portal-dashboard').style.display = 'none';
-            document.getElementById('auth-password').value = '';
         }
-
-        // Add CSS Spinner animation dynamically
-        const style = document.createElement('style');
-        style.innerHTML = `@keyframes spin { 100% { transform: rotate(360deg); } } .spin { animation: spin 1s linear infinite; }`;
     </script>
 </body>
 

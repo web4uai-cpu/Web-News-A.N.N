@@ -1,32 +1,68 @@
-# 🏗️ A.N.N. System Architecture
+# A.N.N. Enterprise Architecture Blueprint
 
-The **AI News Network (A.N.N.)** operates through a highly decoupled, event-driven pipeline. This document maps out exactly how data flows from ingestion to broadcast.
+This document outlines the target 4-Phase Enterprise Architecture for the AI News Network (A.N.N.) platform, ensuring high availability, peak performance, and infinite scalability.
 
-## 1. Data Ingestion Layer (`backend/ingestion/`)
-A.N.N. acts as an aggregate crawler using external APIs. The ingestion layer securely fetches raw news using the following modules:
-* `newsapi_source.py`: Scrapes general, business, and tech news from NewsAPI.
-* `alphavantage_source.py`: Focuses strictly on financial tickers and global markets.
-* `gdelt_source.py`: Crawls global socio-political events and breaking geographic incidents.
+## Current State overview
+The application is built on:
+- **FastAPI** (High-performance Python web framework)
+- **SQLAlchemy / Alembic** (Database ORM and migrations)
+- **Celery** (Distributed task queue)
+- **FastAPI Cache** (In-memory / Redis caching)
 
-*All scrapers enforce strict rate limiting using `utils/rate_limiter.py` to prevent API bans.*
+Currently, the system is capable of running locally but needs robust infrastructure to achieve true enterprise scale.
 
-## 2. Multi-Agent Processing Pipeline (`backend/agents/`)
-Whenever a raw article is fetched, it is routed through a series of intelligent LLM agents.
-1. **FactExtractorAgent**: Analyzes the raw article for verifiable, mathematical, and objective facts. **It strips all original prose** to ensure A.N.N. is legally protected from copyright infringement.
-2. **ScriptwriterAgent**: Takes the extracted facts and generates a brand-new, original broadcast script using professional news-anchor tonality.
-3. **CriticAgent**: Evaluates the script for hallucinations or sensationalism. If the script fails, the `ScriptwriterAgent` is forced into a rewrite loop.
-4. **HeadlineGeneratorAgent**: Crafts an AP-style breaking news headline.
-5. **TranslatorAgent**: Translates the final script into Hindi (and maps out Arabic/Spanish/French logic for future scale).
+---
 
-## 3. Media Generation (`backend/media/`)
-Once the editorial process completes successfully, the pipeline triggers the Media layers:
-* **Audio**: `elevenlabs_tts.py` invokes ElevenLabs voice cloning to generate ultra-realistic English and Hindi voiceovers.
-* **Video**: `heygen_video.py` transmits the scripts to HeyGen to synthesize artificial human anchors lip-syncing the broadcast.
+## 🚀 Phase 1: Performance & Background Processing (Current Focus)
 
-## 4. Distribution, Syndication & Streaming (`backend/feeds/` & `backend/social/` & `backend/main.py`)
-The final `BroadcastScript` entity is simultaneously blasted out using world-class distribution techniques:
-* **High-Performance WebSockets**: `main.py` utilizes FastAPI `WebSocket` routing to simultaneously push the generated `BroadcastScript` direct to the `frontend/public/news.html` dashboard natively. Browsers auto-render breaking news without needing to reload the webpage.
-* **Supabase Cloud Sync**: `supabase_client.py` pushes the DB record to a Supabase Postgres instance for worldwide Edge CDN delivery.
-* **Social Media Automations**: `social_scheduler.py` triggers `instagram_poster.py` (which uses Pillow to generate a branded 1080x1080 graphic card), `facebook_poster.py`, and `twitter_poster.py`.
-* **RSS / Atom Feeds**: The scripts are automatically served as statically-parseable XML objects to `http://localhost:8000/feed/rss` and `/feed/atom`.
-* **Stripe Revenue & Webhooks**: The system natively exposes Checkout mechanisms in `backend/services/billing.py`. Clients pay via Stripe -> Stripe Webhook hits A.N.N. -> Auto-generates an enterprise API Key via SQLAlchemy Alembic Migrations -> Dispatches raw JSON news to their own servers via `webhook.py`.
+**Goal:** Offload heavy processing from the main web server and cache frequent requests.
+
+1. **Redis Cache Layer:**
+   - Deploy a Redis instance.
+   - Configure `REDIS_URL` in the `.env` file.
+   - FastAPI will automatically switch from `InMemoryBackend` to `RedisBackend` for caching API responses (e.g., `/feed/json`).
+
+2. **Celery Task Queue:**
+   - Run a dedicated Celery worker process.
+   - Use Redis as the message broker.
+   - Offload NewsAPI, AlphaVantage, and GDELT ingestion/processing pipelines, as well as B2B Studio generations, to the background worker.
+
+---
+
+## 📊 Phase 2: Observability & Health Monitoring
+
+**Goal:** Real-time insights into system health.
+
+1. **Prometheus Metrics:**
+   - Instrument FastAPI with `prometheus-fastapi-instrumentator`.
+   - Track request latency, error rates, and active database connections.
+
+2. **Grafana Dashboards:**
+   - Connect Grafana to Prometheus.
+   - Create custom dashboards for:
+     - API Gateway Health (Requests per second, latency)
+     - Celery Queue Depth (How many articles are pending generation)
+     - Stripe B2B Revenue metrics
+
+---
+
+## 🚢 Phase 3: Orchestration & Infinite Scale
+
+**Goal:** Zero-downtime deployments and auto-scaling.
+
+1. **Docker Containerization:**
+   - Finalize `Dockerfile` for the FastAPI backend, Celery worker, and Frontend.
+
+2. **Kubernetes (K8s) Cluster:**
+   - Deploy the containers into a managed K8s cluster (e.g., EKS, GKE, or AKS).
+   - Use a **Load Balancer** to route incoming traffic across multiple FastAPI pods.
+
+---
+
+## 💾 Phase 4: High-Availability Data Layer
+
+**Goal:** Ensure the database is never the bottleneck.
+
+1. **Clustered DBMS:**
+   - Migrate from local/single-instance databases to a highly available cluster natively supporting replication (e.g., Postgres Multi-AZ or Supabase clustered).
+   - Implement read-replicas so that dashboard queries and feed reads do not block transactional B2B API key operations.

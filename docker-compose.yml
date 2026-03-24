@@ -21,9 +21,49 @@ services:
           cpus: '2.0'
           memory: 2G
 
-  # Ready for future Redis queue implementation for high-availability worker scaling
-  # redis:
-  #   image: redis:alpine
-  #   ports:
-  #     - "6379:6379"
-  #   restart: unless-stopped
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  celery_worker:
+    build: 
+      context: ./backend
+      dockerfile: Dockerfile
+    env_file:
+      - ./backend/.env
+    environment:
+      - REDIS_URL=redis://redis:6379/0
+    volumes:
+      - ./backend/output:/app/output
+    depends_on:
+      redis:
+        condition: service_healthy
+    command: celery -A celery_app worker --loglevel=info
+    restart: unless-stopped
+
+  prometheus:
+    image: prom/prometheus:latest
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+    restart: unless-stopped
+    depends_on:
+      - ann-backend
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    restart: unless-stopped
+    depends_on:
+      - prometheus

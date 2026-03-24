@@ -1,0 +1,115 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ann-enterprise
+---
+# ── REDIS (CACHE & BROKER) ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: redis
+  namespace: ann-enterprise
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: redis
+  template:
+    metadata:
+      labels:
+        app: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:alpine
+          ports:
+            - containerPort: 6379
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: redis
+  namespace: ann-enterprise
+spec:
+  ports:
+    - port: 6379
+  selector:
+    app: redis
+---
+# ── CELERY WORKER ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: celery-worker
+  namespace: ann-enterprise
+spec:
+  replicas: 3 # Scaled out workers for background tasks
+  selector:
+    matchLabels:
+      app: celery-worker
+  template:
+    metadata:
+      labels:
+        app: celery-worker
+    spec:
+      containers:
+        - name: worker
+          image: ann-backend:latest
+          imagePullPolicy: IfNotPresent
+          command: ["celery", "-A", "celery_app", "worker", "--loglevel=info"]
+          env:
+            - name: REDIS_URL
+              value: "redis://redis:6379/0"
+          # Mount your env config or use K8s ConfigMap/Secrets here
+          envFrom:
+            - secretRef:
+                name: ann-secrets
+---
+# ── FASTAPI BACKEND ──
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ann-backend
+  namespace: ann-enterprise
+spec:
+  replicas: 3 # High Availability
+  selector:
+    matchLabels:
+      app: ann-backend
+  template:
+    metadata:
+      labels:
+        app: ann-backend
+        # Prometheus scrape annotations
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+    spec:
+      containers:
+        - name: api
+          image: ann-backend:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - secretRef:
+                name: ann-secrets
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# ── LOAD BALANCER ──
+apiVersion: v1
+kind: Service
+metadata:
+  name: ann-loadbalancer
+  namespace: ann-enterprise
+spec:
+  type: LoadBalancer # Automatically provisions Cloud Load Balancer (AWS ELB/GCP HTTP LB)
+  ports:
+    - port: 80
+      targetPort: 8000
+  selector:
+    app: ann-backend

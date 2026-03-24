@@ -23,9 +23,10 @@ TIER_LIMITS = {
     "enterprise": 100000
 }
 
-async def create_checkout_session(tier: str, client_name: str, success_url: str, cancel_url: str):
+async def create_checkout_session(tier: str, client_name: str, success_url: str, cancel_url: str, currency: str = "usd"):
     """
     Generate a Stripe checkout session for a B2B API key purchase.
+    Supports 'usd' and 'inr' currencies.
     """
     if not stripe.api_key:
         raise HTTPException(status_code=500, detail="Stripe API keys are not configured.")
@@ -34,15 +35,29 @@ async def create_checkout_session(tier: str, client_name: str, success_url: str,
         raise HTTPException(status_code=400, detail="Invalid plan tier.")
 
     try:
-        # In production this uses line_items with price_xxx. Here we mock custom pricing inline.
-        amount = 4900 if tier == "standard" else (19900 if tier == "pro" else 99900)
+        # Define pricing based on currency (amount is in smallest currency unit: cents/paise)
+        if currency.lower() == "inr":
+            prices = {
+                "standard": 399900,   # ₹3,999
+                "pro": 1599900,       # ₹15,999
+                "enterprise": 7999900 # ₹79,999
+            }
+        else:
+            currency = "usd"
+            prices = {
+                "standard": 4900,     # $49.00
+                "pro": 19900,         # $199.00
+                "enterprise": 99900   # $999.00
+            }
+
+        amount = prices.get(tier, prices["standard"])
         
         session = stripe.checkout.Session.create(
             payment_method_types=["card"],
             line_items=[
                 {
                     "price_data": {
-                        "currency": "usd",
+                        "currency": currency.lower(),
                         "product_data": {
                             "name": f"A.N.N. API - {tier.upper()} Tier",
                             "description": f"Provides up to {TIER_LIMITS[tier]} API requests per month.",

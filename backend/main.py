@@ -13,7 +13,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
 from fastapi.staticfiles import StaticFiles
-from fastapi.responses import FileResponse, JSONResponse
+from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
 from dotenv import load_dotenv
 
@@ -137,6 +137,13 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# ── Metrics Instrumentation ────────────────────────────
+try:
+    from prometheus_fastapi_instrumentator import Instrumentator
+    Instrumentator().instrument(app).expose(app, endpoint="/metrics")
+except ImportError:
+    pass
 
 # Serve the frontend dashboard
 FRONTEND_DIR = os.path.join(os.path.dirname(__file__), "..", "frontend")
@@ -720,12 +727,13 @@ from services.billing import create_checkout_session, handle_stripe_webhook
 from fastapi import Request
 
 @app.post("/api/v1/b2b/checkout", tags=["Revenue Engine"])
-async def b2b_checkout(tier: str = Query("pro", description="standard, pro, enterprise"), client_name: str = Query(..., description="Your Company Name")):
+async def b2b_checkout(tier: str = Query("pro", description="standard, pro, enterprise"), client_name: str = Query(..., description="Your Company Name"), currency: str = Query("usd", description="usd or inr")):
     """Redirects the client to Stripe to purchase an API key subscription."""
     url_payload = await create_checkout_session(
         tier, client_name, 
-        success_url=f"{settings.public_url}/news?payment=success", 
-        cancel_url=f"{settings.public_url}/news?payment=cancelled"
+        success_url=f"{settings.public_url}/portal?payment=success", 
+        cancel_url=f"{settings.public_url}/portal?payment=cancelled",
+        currency=currency
     )
     return url_payload
 
@@ -739,7 +747,7 @@ async def stripe_webhook(request: Request):
 
 # ── B2B Client Portal Secure Routes ────────────────────
 
-from fastapi import HTTPException
+from fastapi import HTTPException, Header
 
 @app.get("/api/v1/b2b/portal/metrics", tags=["B2B Client Portal"])
 async def get_client_portal_metrics(api_key: str = Header(..., alias="X-ANN-API-Key")):
