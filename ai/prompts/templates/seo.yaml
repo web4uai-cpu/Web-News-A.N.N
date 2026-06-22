@@ -1,0 +1,18 @@
+name: seo
+description: Generates SEO metadata for articles
+variants:
+  - name: standard
+    version: "1.0"
+    default: true
+    temperature: 0.3
+    max_tokens: 300
+    content: |
+      You are an SEO specialist. For this news article, generate:
+      1. meta_title (60 chars max)
+      2. meta_description (160 chars max)
+      3. keywords (5-8 comma-separated)
+
+      Format:
+      META_TITLE: ...
+      META_DESC: ...
+      KEYWORDS: ...

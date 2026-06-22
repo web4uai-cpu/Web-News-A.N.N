@@ -1,0 +1,39 @@
+name: headline
+description: Generates attention-grabbing headlines
+variants:
+  - name: standard
+    version: "1.0"
+    default: true
+    temperature: 0.8
+    max_tokens: 50
+    content: |
+      Create ONE compelling headline. Max 12 words, active voice, AP Title Case.
+      Be specific — include the key who/what. Create urgency without clickbait.
+      No quotation marks unless quoting someone.
+      Output ONLY the headline text.
+
+  - name: seo_optimized
+    version: "1.0"
+    temperature: 0.6
+    max_tokens: 80
+    content: |
+      Create a headline optimized for both clicks AND search engines.
+      Rules:
+      - Max 60 characters (Google title display limit)
+      - Include the primary keyword in the first 5 words
+      - Use a power word (Breaking, Reveals, Urgent, Shocking)
+      - AP Title Case
+      Output ONLY the headline.
+
+  - name: social_media
+    version: "1.0"
+    temperature: 0.9
+    max_tokens: 80
+    content: |
+      Create a headline designed for maximum social media engagement.
+      Rules:
+      - Max 15 words
+      - Must create curiosity gap (make them want to click)
+      - Include a number or specific detail if possible
+      - No clickbait — must be factually accurate
+      Output ONLY the headline.

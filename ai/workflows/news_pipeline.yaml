@@ -1,0 +1,80 @@
+name: news_pipeline
+version: "2.0"
+description: Full 10-agent news production pipeline via LangGraph
+
+entry_point: discovery
+
+nodes:
+  discovery:
+    agent: discovery
+    prompt: fact_extractor  # reuses relevance scoring
+    next:
+      condition: relevance_score >= 3.0
+      true: fact_extraction
+      false: END
+
+  fact_extraction:
+    agent: fact_extractor
+    prompt: fact_extractor
+    next: scriptwriter
+
+  scriptwriter:
+    agent: scriptwriter
+    prompt: scriptwriter
+    variant_strategy: ab_test  # A/B test between anchor/conversational/dramatic
+    next: critic
+
+  critic:
+    agent: critic
+    prompt: critic
+    next:
+      condition: critic_approved OR draft_count > max_retries
+      true: legal
+      false: scriptwriter  # rewrite loop
+
+  legal:
+    agent: legal
+    prompt: legal
+    next:
+      condition: legal_approved
+      true: post_process
+      false: END  # block publication
+
+  post_process:
+    parallel:
+      - headline
+      - seo
+      - translation
+
+  headline:
+    agent: headline
+    prompt: headline
+    variant_strategy: ab_test
+    next: publishing
+
+  seo:
+    agent: seo
+    prompt: seo
+    next: publishing
+
+  translation:
+    agent: translator
+    prompt: translator
+    languages: [Hindi, Spanish, French, Arabic]
+    next: publishing
+
+  publishing:
+    agent: publisher
+    wait_for: [headline, seo, translation]  # fan-in
+    actions:
+      - save_to_article_service
+      - index_in_search
+      - broadcast_social
+      - dispatch_webhooks
+    next: END
+
+settings:
+  max_critic_retries: 1
+  relevance_threshold: 3.0
+  concurrency: 3
+  timeout_seconds: 300
