@@ -1,0 +1,49 @@
+name: Deploy to Kubernetes
+
+on:
+  workflow_run:
+    workflows: ["A.N.N. CI/CD Pipeline"]
+    types: [completed]
+    branches: [main]
+
+jobs:
+  deploy:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure kubectl
+        uses: azure/k8s-set-context@v3
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Apply Kubernetes manifests
+        run: |
+          kubectl apply -f infrastructure/kubernetes/namespace.yaml
+          kubectl apply -f infrastructure/kubernetes/configmap.yaml
+          kubectl apply -f infrastructure/kubernetes/redis.yaml
+          kubectl apply -f infrastructure/kubernetes/services.yaml
+          kubectl apply -f infrastructure/kubernetes/ingress.yaml
+          kubectl apply -f infrastructure/kubernetes/hpa.yaml
+
+      - name: Update image tags
+        run: |
+          SERVICES="api-gateway auth-service article-service video-service analytics-service search-service notification-service"
+          for svc in $SERVICES; do
+            kubectl set image deployment/$svc $svc=ghcr.io/${{ github.repository_owner }}/ann/$svc:${{ github.sha }} -n ann
+          done
+
+      - name: Wait for rollout
+        run: |
+          SERVICES="api-gateway auth-service article-service"
+          for svc in $SERVICES; do
+            kubectl rollout status deployment/$svc -n ann --timeout=120s
+          done
+
+      - name: Verify health
+        run: |
+          sleep 10
+          kubectl get pods -n ann
+          kubectl get svc -n ann

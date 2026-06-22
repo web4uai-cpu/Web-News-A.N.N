@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ann-config
+  namespace: ann
+data:
+  LOG_LEVEL: "INFO"
+  REDIS_URL: "redis://redis:6379/0"
+  AUTH_SERVICE_URL: "http://auth-service:8001"
+  ARTICLE_SERVICE_URL: "http://article-service:8002"
+  VIDEO_SERVICE_URL: "http://video-service:8003"
+  ANALYTICS_SERVICE_URL: "http://analytics-service:8004"
+  SEARCH_SERVICE_URL: "http://search-service:8005"
+  NOTIFICATION_SERVICE_URL: "http://notification-service:8006"
+  MONOLITH_URL: "http://ann-backend:8080"
+  PUBLIC_URL: "https://ann.network"
+  CORS_ORIGINS: "https://ann.network,https://www.ann.network"
