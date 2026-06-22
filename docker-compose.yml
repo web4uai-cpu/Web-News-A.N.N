@@ -14,7 +14,9 @@ services:
       - AUTH_SERVICE_URL=http://auth-service:8001
       - ARTICLE_SERVICE_URL=http://article-service:8002
       - VIDEO_SERVICE_URL=http://video-service:8003
-      - NOTIFICATION_SERVICE_URL=http://ann-backend:8080
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8006
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8004
+      - SEARCH_SERVICE_URL=http://search-service:8005
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=*
     depends_on:
@@ -69,6 +71,49 @@ services:
     depends_on:
       redis:
         condition: service_healthy
+    restart: unless-stopped
+
+  # ── Notification Service ────────────────────────────────
+  notification-service:
+    build:
+      context: ./backend/notification-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8006:8006"
+    environment:
+      - PORT=8006
+    env_file:
+      - ./backend/notification-service/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Analytics Service ──────────────────────────────────
+  analytics-service:
+    build:
+      context: ./backend/analytics-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8004:8004"
+    environment:
+      - PORT=8004
+    env_file:
+      - ./backend/analytics-service/.env
+    restart: unless-stopped
+
+  # ── Search Service ─────────────────────────────────────
+  search-service:
+    build:
+      context: ./backend/search-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8005:8005"
+    environment:
+      - PORT=8005
+      - ARTICLE_SERVICE_URL=http://article-service:8002
+    env_file:
+      - ./backend/search-service/.env
     restart: unless-stopped
 
   # ── Legacy Monolith (serves unextracted routes) ─────────
