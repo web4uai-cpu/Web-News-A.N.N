@@ -12,8 +12,8 @@ services:
     environment:
       - MONOLITH_URL=http://ann-backend:8080
       - AUTH_SERVICE_URL=http://auth-service:8001
-      - ARTICLE_SERVICE_URL=http://ann-backend:8080
-      - VIDEO_SERVICE_URL=http://ann-backend:8080
+      - ARTICLE_SERVICE_URL=http://article-service:8002
+      - VIDEO_SERVICE_URL=http://video-service:8003
       - NOTIFICATION_SERVICE_URL=http://ann-backend:8080
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=*
@@ -35,6 +35,37 @@ services:
       - PORT=8001
     env_file:
       - ./backend/auth-service/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Article Service ─────────────────────────────────────
+  article-service:
+    build:
+      context: ./backend/article-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8002:8002"
+    environment:
+      - PORT=8002
+    env_file:
+      - ./backend/article-service/.env
+    restart: unless-stopped
+
+  # ── Video Service ──────────────────────────────────────
+  video-service:
+    build:
+      context: ./backend/video-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8003:8003"
+    environment:
+      - PORT=8003
+    env_file:
+      - ./backend/video-service/.env
+    volumes:
+      - ./backend/output:/app/output
     depends_on:
       redis:
         condition: service_healthy
