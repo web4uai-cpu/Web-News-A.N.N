@@ -1,12 +1,52 @@
 version: '3.8'
 
 services:
-  ann-backend:
-    build: 
-      context: ./backend
+
+  # ── API Gateway (public entry point) ────────────────────
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
       dockerfile: Dockerfile
     ports:
       - "8000:8000"
+    environment:
+      - MONOLITH_URL=http://ann-backend:8080
+      - AUTH_SERVICE_URL=http://auth-service:8001
+      - ARTICLE_SERVICE_URL=http://ann-backend:8080
+      - VIDEO_SERVICE_URL=http://ann-backend:8080
+      - NOTIFICATION_SERVICE_URL=http://ann-backend:8080
+      - REDIS_URL=redis://redis:6379/0
+      - CORS_ORIGINS=*
+    depends_on:
+      redis:
+        condition: service_healthy
+      ann-backend:
+        condition: service_started
+    restart: unless-stopped
+
+  # ── Auth Service ────────────────────────────────────────
+  auth-service:
+    build:
+      context: ./backend/auth-service
+      dockerfile: ../api-gateway/Dockerfile
+    ports:
+      - "8001:8001"
+    environment:
+      - PORT=8001
+    env_file:
+      - ./backend/auth-service/.env
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Legacy Monolith (serves unextracted routes) ─────────
+  ann-backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8000"
     environment:
       - HOST=0.0.0.0
       - PORT=8000
@@ -21,6 +61,7 @@ services:
           cpus: '2.0'
           memory: 2G
 
+  # ── Redis ───────────────────────────────────────────────
   redis:
     image: redis:alpine
     ports:
@@ -32,8 +73,9 @@ services:
       timeout: 3s
       retries: 5
 
+  # ── Celery Worker ───────────────────────────────────────
   celery_worker:
-    build: 
+    build:
       context: ./backend
       dockerfile: Dockerfile
     env_file:
@@ -48,6 +90,7 @@ services:
     command: celery -A celery_app worker --loglevel=info
     restart: unless-stopped
 
+  # ── Prometheus ──────────────────────────────────────────
   prometheus:
     image: prom/prometheus:latest
     ports:
@@ -56,12 +99,13 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
     depends_on:
-      - ann-backend
+      - api-gateway
 
+  # ── Grafana ─────────────────────────────────────────────
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3000:3000"
+      - "3001:3000"
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=admin
     restart: unless-stopped
