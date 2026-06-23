@@ -148,7 +148,9 @@ Respond in this exact JSON format:
             content = data["choices"][0]["message"]["content"]
 
             import json
-            result = json.loads(content)
+            import re
+            cleaned = re.sub(r"```json\s*|\s*```", "", content).strip()
+            result = json.loads(cleaned)
             return {
                 "headline": result.get("headline", article["raw_text"][:80]),
                 "english_script": result.get("english_script", article["raw_text"][:300]),

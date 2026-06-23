@@ -16,8 +16,8 @@ class ArticleSettings(BaseSettings):
     public_url: str = Field(default="http://localhost:8000", description="Public-facing base URL")
 
     llm_api_key: str = Field(default="", description="OpenAI / Gemini API Key")
-    llm_model: str = Field(default="gpt-4o", description="LLM model identifier")
-    llm_base_url: str = Field(default="https://api.openai.com/v1", description="LLM API base URL")
+    llm_model: str = Field(default="gemini-2.0-flash", description="LLM model identifier")
+    llm_base_url: str = Field(default="https://generativelanguage.googleapis.com/v1beta/openai", description="LLM API base URL")
     news_api_key: str = Field(default="", description="NewsAPI.org API Key")
     alpha_vantage_key: str = Field(default="", description="Alpha Vantage API Key")
     analytics_service_url: str = Field(default="http://localhost:8005", description="Analytics service URL")
