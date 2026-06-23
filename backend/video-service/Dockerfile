@@ -12,5 +12,5 @@ COPY . .
 RUN mkdir -p /app/output/audio /app/output/video /app/output/video/shorts /app/output/images && chown -R appuser:appuser /app
 USER appuser
 ENV PYTHONUNBUFFERED=1 PYTHONDONTWRITEBYTECODE=1
-EXPOSE ${PORT:-8003}
-CMD uvicorn main:app --host 0.0.0.0 --port ${PORT:-8003} --workers ${WORKERS:-2} --log-level ${LOG_LEVEL:-info}
+EXPOSE 8000
+CMD ["sh", "-c", "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2} --log-level ${LOG_LEVEL:-info}"]

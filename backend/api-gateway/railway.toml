@@ -1,5 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["backend/api-gateway/**"]
+
 [deploy]
-startCommand = "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2}"
+startCommand = "sh -c 'uvicorn main:app --host 0.0.0.0 --port ${PORT:-8000} --workers ${WORKERS:-2}'"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 numReplicas = 1
