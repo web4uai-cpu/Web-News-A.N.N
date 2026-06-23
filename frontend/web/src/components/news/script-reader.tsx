@@ -19,10 +19,31 @@ export function ScriptReader() {
     return () => window.removeEventListener("keydown", handler);
   }, []);
 
+  const langConfig = [
+    { code: "en" as const, label: "🇬🇧 English", dir: "ltr" as const },
+    { code: "hi" as const, label: "🇮🇳 हिन्दी", dir: "ltr" as const },
+    { code: "es" as const, label: "🇪🇸 Español", dir: "ltr" as const },
+    { code: "fr" as const, label: "🇫🇷 Français", dir: "ltr" as const },
+    { code: "ar" as const, label: "🇸🇦 العربية", dir: "rtl" as const },
+  ];
+
+  const getScriptText = () => {
+    if (!activeScript) return "";
+    const map: Record<string, string> = {
+      en: activeScript.english_script,
+      hi: activeScript.hindi_script,
+      es: activeScript.spanish_script ?? activeScript.english_script,
+      fr: activeScript.french_script ?? activeScript.english_script,
+      ar: activeScript.arabic_script ?? activeScript.english_script,
+    };
+    return map[readerLang] ?? activeScript.english_script;
+  };
+
+  const currentDir = langConfig.find((l) => l.code === readerLang)?.dir ?? "ltr";
+
   const copyScript = () => {
     if (!activeScript) return;
-    const text = readerLang === "hi" ? activeScript.hindi_script : activeScript.english_script;
-    navigator.clipboard.writeText(text);
+    navigator.clipboard.writeText(getScriptText());
     toast("Script copied!", "success");
   };
 
@@ -72,28 +93,22 @@ export function ScriptReader() {
 
             {/* Body */}
             <div className="max-h-[55vh] overflow-y-auto p-5">
-              <div className="mb-4 flex gap-1">
-                <button
-                  onClick={() => setReaderLang("en")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    readerLang === "en" ? "bg-indigo-500/20 text-indigo-400" : "text-muted hover:text-white"
-                  }`}
-                >
-                  🇬🇧 English
-                </button>
-                <button
-                  onClick={() => setReaderLang("hi")}
-                  className={`rounded-full px-3 py-1 text-xs font-medium ${
-                    readerLang === "hi" ? "bg-indigo-500/20 text-indigo-400" : "text-muted hover:text-white"
-                  }`}
-                >
-                  🇮🇳 हिन्दी
-                </button>
+              <div className="mb-4 flex flex-wrap gap-1">
+                {langConfig.map((lang) => (
+                  <button
+                    key={lang.code}
+                    onClick={() => setReaderLang(lang.code)}
+                    className={`rounded-full px-3 py-1 text-xs font-medium ${
+                      readerLang === lang.code ? "bg-indigo-500/20 text-indigo-400" : "text-muted hover:text-white"
+                    }`}
+                  >
+                    {lang.label}
+                  </button>
+                ))}
               </div>
 
-              <div className="whitespace-pre-line text-sm leading-relaxed text-muted">
-                {(readerLang === "hi" ? activeScript.hindi_script : activeScript.english_script)
-                  ?.replace(/\[PAUSE\]/g, "\n\n— PAUSE —\n\n")}
+              <div className="whitespace-pre-line text-sm leading-relaxed text-muted" dir={currentDir}>
+                {getScriptText()?.replace(/\[PAUSE\]/g, "\n\n— PAUSE —\n\n")}
               </div>
             </div>
 

@@ -73,12 +73,12 @@ interface NewsState {
   filteredScripts: Script[];
   activeCategory: string;
   activeScript: Script | null;
-  readerLang: "en" | "hi";
+  readerLang: "en" | "hi" | "es" | "fr" | "ar";
 
   setScripts: (scripts: Script[]) => void;
   setActiveCategory: (cat: string) => void;
   setActiveScript: (script: Script | null) => void;
-  setReaderLang: (lang: "en" | "hi") => void;
+  setReaderLang: (lang: "en" | "hi" | "es" | "fr" | "ar") => void;
 }
 
 export const useNewsStore = create<NewsState>((set, get) => ({

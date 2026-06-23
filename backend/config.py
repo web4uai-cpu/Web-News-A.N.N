@@ -37,10 +37,16 @@ class Settings(BaseSettings):
     elevenlabs_api_key: str = Field(default="", description="ElevenLabs API Key")
     elevenlabs_voice_en: str = Field(default="", description="English voice clone ID")
     elevenlabs_voice_hi: str = Field(default="", description="Hindi voice clone ID")
+    elevenlabs_voice_es: str = Field(default="", description="Spanish voice clone ID")
+    elevenlabs_voice_fr: str = Field(default="", description="French voice clone ID")
+    elevenlabs_voice_ar: str = Field(default="", description="Arabic voice clone ID")
 
     heygen_api_key: str = Field(default="", description="HeyGen API Key")
     heygen_avatar_en: str = Field(default="", description="English avatar ID")
     heygen_avatar_hi: str = Field(default="", description="Hindi avatar ID")
+    heygen_avatar_es: str = Field(default="", description="Spanish avatar ID")
+    heygen_avatar_fr: str = Field(default="", description="French avatar ID")
+    heygen_avatar_ar: str = Field(default="", description="Arabic avatar ID")
 
     # ── Rate Limits (requests per minute) ───────────────
     llm_rpm: int = Field(default=10, description="LLM API requests per minute")

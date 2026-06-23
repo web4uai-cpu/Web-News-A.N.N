@@ -1,0 +1,10 @@
+environment            = "production"
+aws_region             = "us-east-1"
+vpc_cidr               = "10.0.0.0/16"
+az_count               = 3
+eks_node_instance_type = "t3.large"
+eks_node_desired_count = 3
+eks_node_min_count     = 2
+eks_node_max_count     = 10
+rds_instance_class     = "db.r6g.large"
+redis_node_type        = "cache.r6g.large"

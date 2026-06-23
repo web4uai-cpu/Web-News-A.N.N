@@ -1,0 +1,10 @@
+environment            = "staging"
+aws_region             = "us-east-1"
+vpc_cidr               = "10.0.0.0/16"
+az_count               = 2
+eks_node_instance_type = "t3.medium"
+eks_node_desired_count = 2
+eks_node_min_count     = 1
+eks_node_max_count     = 3
+rds_instance_class     = "db.t3.medium"
+redis_node_type        = "cache.t3.small"

@@ -1,0 +1,89 @@
+groups:
+  - name: ann-service-health
+    rules:
+      - alert: ServiceDown
+        expr: up == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Service {{ $labels.job }} is down"
+          description: "{{ $labels.instance }} has been down for more than 1 minute."
+
+      - alert: HighErrorRate
+        expr: rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate on {{ $labels.job }}"
+          description: "Error rate is above 1% for the last 2 minutes (current: {{ $value | humanizePercentage }})."
+
+      - alert: HighLatency
+        expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket[5m])) > 0.5
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High latency on {{ $labels.job }}"
+          description: "P95 latency is above 500ms (current: {{ $value | humanizeDuration }})."
+
+  - name: ann-pipeline
+    rules:
+      - alert: PipelineFailureRate
+        expr: rate(pipeline_runs_total{status="failed"}[1h]) / rate(pipeline_runs_total[1h]) > 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Pipeline failure rate above 10%"
+
+      - alert: PipelineStalled
+        expr: time() - pipeline_last_completion_timestamp > 3600
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "No pipeline completions in the last hour"
+
+  - name: ann-infrastructure
+    rules:
+      - alert: HighCPUUsage
+        expr: avg(rate(container_cpu_usage_seconds_total[5m])) by (pod) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High CPU on pod {{ $labels.pod }}"
+
+      - alert: HighMemoryUsage
+        expr: container_memory_usage_bytes / container_spec_memory_limit_bytes > 0.85
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory on pod {{ $labels.pod }}"
+
+      - alert: DiskSpaceLow
+        expr: (node_filesystem_avail_bytes / node_filesystem_size_bytes) < 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Disk space below 10% on {{ $labels.instance }}"
+
+      - alert: RedisHighMemory
+        expr: redis_memory_used_bytes / redis_memory_max_bytes > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis memory usage above 80%"
+
+      - alert: PostgresConnectionsHigh
+        expr: pg_stat_activity_count / pg_settings_max_connections > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Postgres connections above 80% capacity"

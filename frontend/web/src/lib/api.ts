@@ -22,6 +22,9 @@ export interface Script {
   headline: string;
   english_script: string;
   hindi_script: string;
+  spanish_script?: string;
+  french_script?: string;
+  arabic_script?: string;
   category: string;
   word_count_en: number;
   word_count_hi: number;

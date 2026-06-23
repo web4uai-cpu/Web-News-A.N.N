@@ -29,6 +29,9 @@ class ElevenLabsTTS:
         self.voice_map = {
             Language.ENGLISH: self.settings.elevenlabs_voice_en,
             Language.HINDI: self.settings.elevenlabs_voice_hi,
+            Language.SPANISH: self.settings.elevenlabs_voice_es,
+            Language.FRENCH: self.settings.elevenlabs_voice_fr,
+            Language.ARABIC: self.settings.elevenlabs_voice_ar,
         }
         # Create output directory
         self.output_dir = os.path.join(os.path.dirname(__file__), "..", "output", "audio")
