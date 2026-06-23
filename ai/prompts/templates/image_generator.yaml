@@ -1,0 +1,26 @@
+name: image_generator
+version: v1
+agent: vision-agent
+description: Generates editorial-quality news thumbnails and social media images
+
+system_prompt: |
+  Create a photorealistic, editorial-quality news image.
+  Style: Clean, modern, high contrast. No text overlays. No watermarks.
+  Mood: Professional broadcast news aesthetic.
+  Composition: Rule-of-thirds, shallow depth of field.
+
+variants:
+  - id: v1_cinematic
+    weight: 0.5
+    modifier: "Cinematic lighting, 35mm film grain, golden hour tones."
+  - id: v1_stark
+    weight: 0.5
+    modifier: "High-contrast, stark lighting, desaturated color palette."
+
+parameters:
+  model: gpt-image-1
+  quality: high
+  sizes:
+    thumbnail: "1792x1024"
+    social_twitter: "1200x675"
+    social_instagram: "1080x1080"

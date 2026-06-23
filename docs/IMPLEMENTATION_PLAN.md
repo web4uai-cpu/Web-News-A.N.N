@@ -598,12 +598,122 @@ Phase 5 (Scale)                           Phase 6 (Enterprise)
                                           └─ Sprint 35-36: Hardening + Launch
 ```
 
-**Critical Path:** Sprint 1 → 3 → 5 → 7 → 15 → 25 → 35
+**Critical Path:** Sprint 1 → 3 → 5 → 7 → 15 → 25 → 35 → 37
 
 **Parallel Tracks:**
 - Phase 4 (AI agents) can run in parallel with Phase 3 Sprint 5+ (agents are independent of service split)
 - Phase 5 Sprint 17–18 (mobile) can run in parallel with Sprint 19–20 (languages) with a second developer
 - Phase 6 Sprint 31–34 (research + government) can run in parallel with Sprint 27–30
+- Phase 7 can start after Phase 4 is complete (builds on agent infrastructure)
+
+---
+
+## Phase 7: AI v2 — Next-Gen Intelligence
+
+> **Goal:** Upgrade agents to multi-modal, self-improving, real-time fact-checked autonomous units.
+> **Duration:** 6 sprints (12 weeks / 3 months)
+> **Prerequisites:** Phase 4 complete (LangGraph pipeline, RAG, memory system)
+
+### Sprint 37–38: Multi-Modal Agents (Weeks 73–76)
+
+**Sprint 37: Image Generation Agent**
+
+| Task | Description | File(s) |
+|---|---|---|
+| Thumbnail generator | AI-generated editorial thumbnails per article | `agents/vision-agent/image_generator.py` |
+| Social media cards | Platform-specific image variants (Twitter, IG, YouTube) | `agents/vision-agent/image_generator.py` |
+| Infographic generator | Data visualization images from article statistics | `agents/vision-agent/image_generator.py` |
+| Prompt templates | YAML-based image generation prompts with A/B variants | `ai/prompts/templates/image_generator.yaml` |
+| Pipeline integration | Add thumbnail/social images to PipelineState | `agents/orchestrator/state.py` |
+
+**Sprint 38: Video Understanding Agent**
+
+| Task | Description | File(s) |
+|---|---|---|
+| Keyframe extraction | FFmpeg-based keyframe extraction at configurable intervals | `agents/vision-agent/video_understanding.py` |
+| Audio transcription | Whisper-based transcription from video sources | `agents/vision-agent/video_understanding.py` |
+| Frame analysis | GPT-4o multi-modal analysis of video keyframes | `agents/vision-agent/video_understanding.py` |
+| Visual QA | Answer questions about images for fact-verification | `agents/vision-agent/visual_qa.py` |
+| Image claim verification | Verify text claims against visual evidence | `agents/vision-agent/visual_qa.py` |
+| Manipulation detection | Detect AI-generated or manipulated images | `agents/vision-agent/visual_qa.py` |
+
+**Definition of Done:**
+- [ ] Thumbnails auto-generated for every published article
+- [ ] Social cards created for Twitter, Instagram, YouTube per article
+- [ ] Video sources can be ingested, transcribed, and analyzed
+- [ ] Visual fact-checking flags manipulated images
+
+---
+
+### Sprint 39–40: Real-Time Fact-Checking (Weeks 77–80)
+
+**Sprint 39: Claim Extraction + Live Verification**
+
+| Task | Description | File(s) |
+|---|---|---|
+| Claim extractor | LLM-based extraction of verifiable claims from text | `agents/fact-agent/claim_extractor.py` |
+| Claim prioritization | Rank claims by verifiability and importance | `agents/fact-agent/claim_extractor.py` |
+| Web search verifier | DuckDuckGo-based evidence gathering | `agents/fact-agent/live_verifier.py` |
+| Knowledge base verifier | RAG-based verification against stored articles | `agents/fact-agent/live_verifier.py` |
+| Official data verifier | Wikipedia/Wikidata entity verification | `agents/fact-agent/live_verifier.py` |
+| LLM verdict engine | Evidence synthesis into verification verdicts | `agents/fact-agent/live_verifier.py` |
+
+**Sprint 40: Evidence Scoring + Pipeline Integration**
+
+| Task | Description | File(s) |
+|---|---|---|
+| Evidence scorer | Aggregate claim verdicts into overall fact-check grade | `agents/fact-agent/evidence_scorer.py` |
+| Source reliability weights | Configurable reliability scores per source type | `agents/fact-agent/evidence_scorer.py` |
+| Grade thresholds | A-F grading with editorial review flags | `agents/fact-agent/evidence_scorer.py` |
+| Prompt templates | YAML configs for fact-checking prompts | `ai/prompts/templates/fact_checker.yaml` |
+| Pipeline state | Add fact-check fields to PipelineState | `agents/orchestrator/state.py` |
+
+**Definition of Done:**
+- [ ] Every article gets a fact-check grade (A-F) before publishing
+- [ ] Disputed claims trigger editorial review in moderation queue
+- [ ] Live web search + knowledge base used for cross-referencing
+- [ ] Fact-check scores visible in Control Center
+
+---
+
+### Sprint 41–42: Agent Self-Improvement (Weeks 81–84)
+
+**Sprint 41: Performance Tracking + Prompt Evolution**
+
+| Task | Description | File(s) |
+|---|---|---|
+| Performance tracker | Per-agent metrics: latency, quality, cost, tokens, errors | `ai/self_improve/performance_tracker.py` |
+| Run recording | Record every agent invocation with full metadata | `ai/self_improve/performance_tracker.py` |
+| Trend detection | Identify improving/degrading agents over time | `ai/self_improve/performance_tracker.py` |
+| Prompt evolver | LLM-powered prompt improvement from performance data | `ai/self_improve/prompt_evolver.py` |
+| Prompt registry | Version-controlled prompt variants with lineage tracking | `ai/self_improve/prompt_evolver.py` |
+
+**Sprint 42: A/B Testing + Feedback Loop**
+
+| Task | Description | File(s) |
+|---|---|---|
+| A/B test framework | Traffic splitting, result recording, statistical significance | `ai/self_improve/auto_tuner.py` |
+| Auto-promotion | Winners automatically promoted after significance threshold | `ai/self_improve/auto_tuner.py` |
+| Feedback loop controller | Full self-improvement orchestration cycle | `ai/self_improve/feedback_loop.py` |
+| Cooldown system | Prevent over-evolution with cooldown periods | `ai/self_improve/auto_tuner.py` |
+| Module exports | Clean API for the self-improvement system | `ai/self_improve/__init__.py` |
+
+**Definition of Done:**
+- [ ] Agent quality scores tracked across all pipeline runs
+- [ ] Underperforming agents auto-evolve their prompts
+- [ ] A/B tests run with statistical significance before promotion
+- [ ] Self-improvement cycle runs without human intervention
+- [ ] Prompt version history preserved with full lineage
+
+**Tech Decisions:**
+| Decision | Choice | Rationale |
+|---|---|---|
+| Image generation | GPT Image-1 (OpenAI) | High quality, API-compatible, no separate infra |
+| Video analysis | GPT-4o multi-modal | Frame + audio analysis in one model |
+| Transcription | Whisper-1 | Best accuracy for news audio |
+| Fact-check search | DuckDuckGo + Wikipedia + RAG | Free, no API key needed, plus internal KB |
+| Statistical testing | Welch's t-test (z-approximation) | Simple, appropriate for A/B with unequal variance |
+| Prompt evolution | LLM-generated | Self-referential improvement, no manual tuning needed |
 
 ---
 
@@ -632,6 +742,7 @@ Phase 5 (Scale)                           Phase 6 (Enterprise)
 | Phase 4 | 3 months | 1–2 | Python, LLM APIs, LangGraph, pgvector |
 | Phase 5 | 5 months | 2–3 | React Native, Terraform, ffmpeg, platform APIs |
 | Phase 6 | 6 months | 3–5 | Full-stack, sales engineering, compliance |
+| Phase 7 | 3 months | 2–3 | LLM multi-modal, prompt engineering, statistics, ffmpeg |
 
 ### Infrastructure Costs (Monthly)
 
@@ -641,6 +752,7 @@ Phase 5 (Scale)                           Phase 6 (Enterprise)
 | Phase 4 | $200 | $1,500 | $1,700 |
 | Phase 5 | $1,000 | $3,000 | $4,000 |
 | Phase 6 | $5,000 | $10,000 | $15,000 |
+| Phase 7 | $5,000 | $15,000 | $20,000 |
 
 ### Revenue Targets (Monthly)
 
@@ -650,19 +762,23 @@ Phase 5 (Scale)                           Phase 6 (Enterprise)
 | End Phase 4 (Month 6) | $10,000 | API + early premium |
 | End Phase 5 (Month 10) | $50,000 | API + premium + ads |
 | End Phase 6 (Month 18) | $200,000 | All revenue streams |
+| End Phase 7 (Month 21) | $300,000 | All streams + premium AI features |
 
 ---
 
 ## Success Criteria
 
-| Metric | Phase 3 | Phase 4 | Phase 5 | Phase 6 |
-|---|---|---|---|---|
-| Services running independently | 7 | 7 | 7 | 7 |
-| Agents operational | 5 | 10 | 10 | 10 |
-| Articles/day | 100 | 300 | 500 | 1,000 |
-| Languages | 2 | 5 | 5 | 5+ |
-| API uptime | 99% | 99.5% | 99.9% | 99.99% |
-| B2B clients | 5 | 15 | 30 | 50+ |
-| Monthly revenue | $3K | $10K | $50K | $200K+ |
-| Platforms | Web | Web | Web + Mobile + YouTube + Telegram | All channels |
-| Test coverage | 40% | 60% | 70% | 80% |
+| Metric | Phase 3 | Phase 4 | Phase 5 | Phase 6 | Phase 7 |
+|---|---|---|---|---|---|
+| Services running independently | 7 | 7 | 7 | 7 | 7 |
+| Agents operational | 5 | 10 | 10 | 10 | 15+ (multi-modal) |
+| Articles/day | 100 | 300 | 500 | 1,000 | 1,500+ |
+| Languages | 2 | 5 | 5 | 5+ | 5+ |
+| API uptime | 99% | 99.5% | 99.9% | 99.99% | 99.99% |
+| B2B clients | 5 | 15 | 30 | 50+ | 75+ |
+| Monthly revenue | $3K | $10K | $50K | $200K+ | $300K+ |
+| Platforms | Web | Web | Web + Mobile + YouTube + Telegram | All channels | All channels |
+| Test coverage | 40% | 60% | 70% | 80% | 85% |
+| Fact-check grade | — | — | — | — | A/B on 95% of articles |
+| Agent self-improvement | — | — | — | — | Automated prompt evolution |
+| Multi-modal coverage | — | — | — | — | Images + video analysis |

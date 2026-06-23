@@ -54,6 +54,19 @@ class PipelineState(BaseModel):
     audio_url: str = ""
     video_url: str = ""
     heygen_video_id: str = ""
+    thumbnail_url: str = ""
+    social_images: dict[str, str] = Field(default_factory=dict)
+    short_form_video_url: str = ""
+
+    # Vision analysis (multi-modal)
+    source_image_analysis: dict = Field(default_factory=dict)
+    visual_fact_checks: list[dict] = Field(default_factory=list)
+
+    # Fact-checking (live)
+    live_fact_check_results: list[dict] = Field(default_factory=list)
+    fact_check_score: float = 0.0
+    claims_verified: int = 0
+    claims_disputed: int = 0
 
     # Output
     script_id: str = ""

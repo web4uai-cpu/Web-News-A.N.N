@@ -1,0 +1,38 @@
+name: visual_analyzer
+version: v1
+agent: vision-agent
+description: Multi-modal analysis of images and video for news verification
+
+frame_analysis_prompt: |
+  Analyze these video keyframes from a news broadcast. For each frame:
+  1. Describe what is shown (scene, people, graphics)
+  2. Note any text/chyrons visible
+  3. Assess emotional tone
+  Return JSON array of {"frame": int, "description": str, "text_visible": str, "tone": str}
+
+claim_verification_prompt: |
+  You are a visual fact-checker. Determine if this image supports, contradicts,
+  or is irrelevant to the given claim.
+  Return JSON: {
+    "verdict": "supports" | "contradicts" | "inconclusive" | "irrelevant",
+    "confidence": 0.0-1.0,
+    "reasoning": str,
+    "visual_evidence": [str]
+  }
+
+manipulation_detection_prompt: |
+  Analyze this image for signs of AI generation or manipulation.
+  Look for: inconsistent lighting, warped text, anatomical errors, clone artifacts,
+  unrealistic reflections, metadata anomalies.
+  Return JSON: {
+    "is_likely_manipulated": bool,
+    "confidence": 0.0-1.0,
+    "indicators": [str],
+    "recommendation": str
+  }
+
+parameters:
+  model: gpt-4o
+  temperature: 0.1
+  image_detail: high
+  max_frames_per_video: 20
