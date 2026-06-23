@@ -1,0 +1,27 @@
+{
+  "expo": {
+    "name": "A.N.N. News",
+    "slug": "ann-news",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "scheme": "ann",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#05050a"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ann.news"
+    },
+    "android": {
+      "package": "com.ann.news",
+      "adaptiveIcon": {
+        "backgroundColor": "#05050a"
+      }
+    },
+    "plugins": [
+      "expo-router"
+    ]
+  }
+}
