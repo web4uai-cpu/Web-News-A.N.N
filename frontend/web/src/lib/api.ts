@@ -17,6 +17,18 @@ export async function apiFetch<T>(
   return res.json();
 }
 
+export async function apiFetchSafe<T>(
+  endpoint: string,
+  fallback: T,
+  options?: RequestInit
+): Promise<T> {
+  try {
+    return await apiFetch<T>(endpoint, options);
+  } catch {
+    return fallback;
+  }
+}
+
 export interface Script {
   id: string;
   headline: string;

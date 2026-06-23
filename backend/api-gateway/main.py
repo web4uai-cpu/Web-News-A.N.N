@@ -58,8 +58,10 @@ except ImportError:
 async def health():
     return {
         "service": "api-gateway",
-        "status": "healthy",
+        "status": "A.N.N. API Gateway is running.",
+        "version": "1.0.0",
         "uptime_seconds": round(time.time() - START_TIME, 1),
+        "active_jobs": 0,
     }
 
 
@@ -73,12 +75,10 @@ async def gateway_proxy(request: Request, path: str):
     route = resolve_route(full_path)
 
     if route is None:
-        # Fallback to monolith for unmapped routes
-        from routes import Route
-        route = Route(
-            prefix="/",
-            upstream=settings.monolith_url,
-            auth=AuthLevel.NONE,
+        return Response(
+            content='{"detail": "No route matched"}',
+            status_code=404,
+            media_type="application/json",
         )
 
     # 2. Rate limiting

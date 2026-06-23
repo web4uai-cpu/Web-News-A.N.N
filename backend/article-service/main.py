@@ -1,14 +1,16 @@
 """
 A.N.N. Article Service
-Manages broadcast scripts — CRUD, persistent storage, RSS/Atom/JSON feeds, and embeds.
+Manages broadcast scripts — CRUD, persistent storage, RSS/Atom/JSON feeds, pipeline, and embeds.
 """
 
+import asyncio
 import time
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, BackgroundTasks
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from pydantic import BaseModel
 from sqlalchemy.future import select
 from sqlalchemy import desc
 
@@ -16,6 +18,7 @@ from config import get_settings
 from database import init_db, AsyncSessionLocal, ScriptRow
 from schemas import ScriptResponse, ScriptCreate, ArticleInput
 from feeds import generate_rss, generate_atom, generate_json_feed
+from pipeline import create_job, get_job, list_jobs, run_pipeline
 
 settings = get_settings()
 START_TIME = time.time()
@@ -139,6 +142,83 @@ async def json_feed(category: str | None = Query(None), limit: int = Query(20, g
 async def b2b_json_feed(category: str | None = Query(None), limit: int = Query(20, ge=1, le=50)):
     scripts = await _get_scripts_dicts(category, limit)
     return generate_json_feed(scripts, settings.public_url, category)
+
+
+# ── Pipeline ─────────────────────────────────────────────
+
+
+class PipelineRequest(BaseModel):
+    category: str = "general"
+    query: str | None = None
+    max_articles: int = 5
+
+
+@app.post("/api/v1/pipeline/run")
+async def pipeline_run(
+    background_tasks: BackgroundTasks,
+    request: PipelineRequest = PipelineRequest(),
+    generate_media: bool = Query(False),
+    source: str = Query("newsapi"),
+):
+    job = create_job()
+    background_tasks.add_task(
+        run_pipeline, job.job_id, request.category, request.query,
+        request.max_articles, source, generate_media,
+    )
+    return {"job_id": job.job_id}
+
+
+@app.get("/api/v1/pipeline/status/{job_id}")
+async def pipeline_status(job_id: str):
+    job = get_job(job_id)
+    if not job:
+        raise HTTPException(status_code=404, detail="Job not found.")
+    return {
+        "job_id": job.job_id,
+        "status": job.status.value,
+        "progress_pct": job.progress_pct,
+        "scripts": job.scripts,
+        "errors": job.errors,
+    }
+
+
+@app.get("/api/v1/pipeline/jobs")
+async def pipeline_jobs(limit: int = Query(20, ge=1, le=50)):
+    return list_jobs(limit)
+
+
+# ── Single Article Processing ────────────────────────────
+
+@app.post("/api/v1/process_news", response_model=ScriptResponse)
+async def process_single_article(article: ArticleInput):
+    from pipeline import process_article_through_llm
+    import uuid
+
+    result = await process_article_through_llm({
+        "raw_text": article.raw_text,
+        "source_name": article.source_name,
+        "source_url": article.source_url,
+        "category": article.category,
+    })
+    if not result:
+        raise HTTPException(status_code=500, detail="Processing failed.")
+
+    row = ScriptRow(
+        id=str(uuid.uuid4())[:8],
+        headline=result["headline"],
+        english_script=result["english_script"],
+        hindi_script=result.get("hindi_script", ""),
+        category=result["category"],
+        source_url=result.get("source_url", ""),
+        word_count_en=len(result["english_script"].split()),
+        word_count_hi=len(result.get("hindi_script", "").split()),
+        estimated_duration_seconds=int((len(result["english_script"].split()) / 150) * 60),
+    )
+    async with AsyncSessionLocal() as session:
+        session.add(row)
+        await session.commit()
+        await session.refresh(row)
+    return ScriptResponse.model_validate(row)
 
 
 # ── Entry Point ───────────────────────────────────────────

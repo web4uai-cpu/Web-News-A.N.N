@@ -39,9 +39,11 @@ def build_route_table() -> list[Route]:
         Route("/embed/", s.article_service_url, AuthLevel.NONE),
         Route("/api/v1/b2b/feed/", s.article_service_url, AuthLevel.API_KEY),
 
-        # ── Pipeline (monolith until extracted) ───────────
-        Route("/api/v1/pipeline/", s.monolith_url, AuthLevel.NONE),
-        Route("/api/v1/ingest/", s.monolith_url, AuthLevel.NONE),
+        # ── Pipeline (article-service) ────────────────────
+        Route("/api/v1/pipeline/", s.article_service_url, AuthLevel.NONE),
+
+        # ── Dashboard (analytics-service) ─────────────────
+        Route("/api/v1/dashboard/", s.analytics_service_url, AuthLevel.NONE),
 
         # ── Video Service ─────────────────────────────────
         Route("/api/v1/media/", s.video_service_url, AuthLevel.NONE),
@@ -55,7 +57,7 @@ def build_route_table() -> list[Route]:
         Route("/api/v1/webhooks/stripe", s.auth_service_url, AuthLevel.NONE),
 
         # ── Analytics Service ─────────────────────────────
-        Route("/api/v1/analytics/", s.analytics_service_url, AuthLevel.JWT),
+        Route("/api/v1/analytics/", s.analytics_service_url, AuthLevel.NONE),
 
         # ── Search Service ────────────────────────────────
         Route("/api/v1/search/", s.search_service_url, AuthLevel.NONE),

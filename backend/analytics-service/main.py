@@ -3,6 +3,7 @@ A.N.N. Analytics Service
 Event tracking, engagement metrics, agent performance scoring, and dashboard data.
 """
 
+import os
 import time
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta
@@ -14,7 +15,10 @@ from sqlalchemy.future import select
 from sqlalchemy import func, desc
 
 from config import get_settings
-from database import init_db, AsyncSessionLocal, AnalyticsEvent, AgentMetric
+from database import (
+    init_db, AsyncSessionLocal, AnalyticsEvent, AgentMetric,
+    BroadcastScriptRow, AgentMetricDashboard, MediaJobRow, ClientAPIKey,
+)
 
 settings = get_settings()
 START_TIME = time.time()
@@ -172,6 +176,184 @@ async def agent_performance(hours: int = Query(24, ge=1, le=168)):
             "avg_latency_ms": round(r.avg_latency_ms or 0),
             "success_rate": round((r.successes or 0) / max(r.total_runs, 1) * 100, 1),
             "total_tokens": r.total_tokens or 0,
+        }
+        for r in rows
+    ]
+
+
+# ── Dashboard Endpoints (frontend /dashboard page) ───────
+
+AGENT_NAMES = [
+    ("Discovery Agent", "DSC"), ("Fact Extractor", "FCT"), ("Scriptwriter", "SCR"),
+    ("Critic Agent", "CRT"), ("Headline Gen", "HDL"), ("Translator", "TRN"),
+    ("SEO Agent", "SEO"), ("Avatar Producer", "AVT"), ("Publisher", "PUB"), ("Legal Agent", "LGL"),
+]
+
+
+@app.get("/api/v1/dashboard/agents")
+async def dashboard_agents():
+    async with AsyncSessionLocal() as session:
+        stmt = (
+            select(
+                AgentMetricDashboard.agent_name,
+                func.sum(AgentMetricDashboard.tasks_completed).label("tasks_completed"),
+                func.avg(AgentMetricDashboard.latency_seconds).label("avg_latency"),
+            )
+            .group_by(AgentMetricDashboard.agent_name)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        latest_stmt = select(AgentMetricDashboard).order_by(AgentMetricDashboard.created_at.desc()).limit(50)
+        latest_result = await session.execute(latest_stmt)
+        latest = {r.agent_name: r for r in latest_result.scalars().all()}
+
+    if not rows:
+        return [
+            {"name": n, "shortName": s, "tasks_completed": 0, "avg_latency": "--", "status": "idle", "last_run": "--"}
+            for n, s in AGENT_NAMES
+        ]
+    return [
+        {
+            "name": r.agent_name,
+            "tasks_completed": r.tasks_completed or 0,
+            "avg_latency": f"{r.avg_latency:.1f}s" if r.avg_latency else "--",
+            "status": latest[r.agent_name].status if r.agent_name in latest else "idle",
+            "last_run": latest[r.agent_name].created_at.strftime("%H:%M:%S") if r.agent_name in latest else "--",
+        }
+        for r in rows
+    ]
+
+
+@app.get("/api/v1/dashboard/throughput")
+async def dashboard_throughput():
+    async with AsyncSessionLocal() as session:
+        now = datetime.utcnow()
+        day_ago = now - timedelta(hours=24)
+
+        total_today = (await session.execute(
+            select(func.count()).select_from(BroadcastScriptRow).where(BroadcastScriptRow.created_at >= day_ago)
+        )).scalar() or 0
+
+        hourly = []
+        for i in range(23, -1, -1):
+            hour_start = now - timedelta(hours=i + 1)
+            hour_end = now - timedelta(hours=i)
+            count = (await session.execute(
+                select(func.count()).select_from(BroadcastScriptRow).where(
+                    BroadcastScriptRow.created_at >= hour_start,
+                    BroadcastScriptRow.created_at < hour_end,
+                )
+            )).scalar() or 0
+            hourly.append({"hour": hour_end.strftime("%H:00"), "articles": count})
+
+        cat_result = await session.execute(
+            select(BroadcastScriptRow.category, func.count().label("count"))
+            .where(BroadcastScriptRow.created_at >= day_ago)
+            .group_by(BroadcastScriptRow.category)
+            .order_by(func.count().desc())
+            .limit(6)
+        )
+        categories = [{"category": r.category, "count": r.count} for r in cat_result.all()]
+
+    return {
+        "total_today": total_today,
+        "avg_per_hour": round(total_today / 24, 1),
+        "hourly": hourly,
+        "categories": categories,
+    }
+
+
+@app.get("/api/v1/dashboard/revenue")
+async def dashboard_revenue():
+    async with AsyncSessionLocal() as session:
+        total_clients = (await session.execute(
+            select(func.count()).select_from(ClientAPIKey).where(ClientAPIKey.is_active == 1)
+        )).scalar() or 0
+
+        total_requests = (await session.execute(
+            select(func.sum(ClientAPIKey.requests_used))
+        )).scalar() or 0
+
+        clients = (await session.execute(
+            select(ClientAPIKey).where(ClientAPIKey.is_active == 1)
+        )).scalars().all()
+
+        tier_breakdown = {}
+        for c in clients:
+            tier_breakdown[c.plan_tier] = tier_breakdown.get(c.plan_tier, 0) + 1
+
+    return {
+        "total_clients": total_clients,
+        "total_api_requests": total_requests or 0,
+        "tier_breakdown": tier_breakdown,
+        "clients": [
+            {"name": c.client_name, "tier": c.plan_tier, "requests_used": c.requests_used, "monthly_quota": c.monthly_quota}
+            for c in clients
+        ],
+    }
+
+
+@app.get("/api/v1/dashboard/media-jobs")
+async def dashboard_media_jobs(limit: int = Query(20, ge=1, le=50)):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MediaJobRow).order_by(MediaJobRow.created_at.desc()).limit(limit)
+        )
+        return [
+            {
+                "id": r.id, "script_id": r.script_id, "headline": r.headline,
+                "media_type": r.media_type, "language": r.language,
+                "status": r.status, "progress": r.progress,
+                "duration": r.duration, "output_url": r.output_url,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in result.scalars().all()
+        ]
+
+
+@app.get("/api/v1/dashboard/system")
+async def dashboard_system():
+    try:
+        import psutil
+        process = psutil.Process()
+        mem = process.memory_info()
+        cpu = psutil.cpu_percent(interval=0.1)
+        mem_mb = round(mem.rss / 1024 / 1024, 1)
+        mem_pct = round(process.memory_percent(), 1)
+        disk_pct = psutil.disk_usage("/").percent
+    except Exception:
+        cpu, mem_mb, mem_pct, disk_pct = 0, 0, 0, 0
+
+    return {
+        "cpu_percent": cpu,
+        "memory_used_mb": mem_mb,
+        "memory_percent": mem_pct,
+        "disk_usage_percent": disk_pct,
+        "redis_status": "connected" if os.getenv("REDIS_URL") else "not_configured",
+        "celery_status": "connected" if os.getenv("REDIS_URL") else "not_configured",
+        "scripts_in_memory": 0,
+        "social_platforms": [],
+        "social_auto_post": False,
+    }
+
+
+# ── Scripts endpoint (so dashboard can fetch scripts directly) ──
+
+@app.get("/api/v1/scripts")
+async def list_scripts(limit: int = Query(20, ge=1, le=100)):
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(BroadcastScriptRow).order_by(desc(BroadcastScriptRow.created_at)).limit(limit)
+        )
+        rows = result.scalars().all()
+    return [
+        {
+            "id": r.id, "headline": r.headline, "english_script": r.english_script,
+            "hindi_script": r.hindi_script, "category": r.category,
+            "source_url": r.source_url, "word_count_en": r.word_count_en,
+            "word_count_hi": r.word_count_hi, "estimated_duration_seconds": r.estimated_duration_seconds,
+            "created_at": r.created_at.isoformat(),
         }
         for r in rows
     ]

@@ -15,6 +15,13 @@ class ArticleSettings(BaseSettings):
     supabase_key: str = Field(default="", description="Supabase service key")
     public_url: str = Field(default="http://localhost:8000", description="Public-facing base URL")
 
+    llm_api_key: str = Field(default="", description="OpenAI / Gemini API Key")
+    llm_model: str = Field(default="gpt-4o", description="LLM model identifier")
+    llm_base_url: str = Field(default="https://api.openai.com/v1", description="LLM API base URL")
+    news_api_key: str = Field(default="", description="NewsAPI.org API Key")
+    alpha_vantage_key: str = Field(default="", description="Alpha Vantage API Key")
+    analytics_service_url: str = Field(default="http://localhost:8005", description="Analytics service URL")
+
     class Config:
         env_file = ".env"
         env_file_encoding = "utf-8"
