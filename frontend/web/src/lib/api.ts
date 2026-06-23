@@ -97,4 +97,71 @@ export const api = {
       `/api/v1/b2b/checkout?tier=${tier}&client_name=${clientName}`,
       { method: "POST" }
     ),
+
+  // Dashboard real metrics
+  dashboardAgents: () => apiFetch<AgentMetric[]>("/api/v1/dashboard/agents"),
+  dashboardThroughput: () => apiFetch<ThroughputData>("/api/v1/dashboard/throughput"),
+  dashboardRevenue: () => apiFetch<RevenueData>("/api/v1/dashboard/revenue"),
+  dashboardMediaJobs: (limit = 20) => apiFetch<MediaJob[]>(`/api/v1/dashboard/media-jobs?limit=${limit}`),
+  dashboardSystem: () => apiFetch<SystemMetrics>("/api/v1/dashboard/system"),
+
+  // Social
+  socialStatus: () => apiFetch<SocialStatus>("/api/v1/social/status"),
+  socialBroadcast: (scriptId: string) =>
+    apiFetch<Record<string, unknown>>(`/api/v1/social/broadcast/${scriptId}`, { method: "POST" }),
+  socialTestConnection: (platform: string) =>
+    apiFetch<{ status: string; message: string }>(`/api/v1/social/test/${platform}`, { method: "POST" }),
 };
+
+export interface AgentMetric {
+  name: string;
+  shortName?: string;
+  tasks_completed: number;
+  avg_latency: string;
+  status: string;
+  last_run: string;
+}
+
+export interface ThroughputData {
+  total_today: number;
+  avg_per_hour: number;
+  hourly: { hour: string; articles: number }[];
+  categories: { category: string; count: number }[];
+}
+
+export interface RevenueData {
+  total_clients: number;
+  total_api_requests: number;
+  tier_breakdown: Record<string, number>;
+  clients: { name: string; tier: string; requests_used: number; monthly_quota: number }[];
+}
+
+export interface MediaJob {
+  id: string;
+  script_id: string;
+  headline: string;
+  media_type: string;
+  language: string;
+  status: string;
+  progress: number;
+  duration: string;
+  output_url: string;
+  created_at: string;
+}
+
+export interface SystemMetrics {
+  cpu_percent: number;
+  memory_used_mb: number;
+  memory_percent: number;
+  disk_usage_percent: number;
+  redis_status: string;
+  celery_status: string;
+  scripts_in_memory: number;
+  social_platforms: string[];
+  social_auto_post: boolean;
+}
+
+export interface SocialStatus {
+  enabled_platforms: string[];
+  auto_post: boolean;
+}

@@ -7,8 +7,8 @@ Tracks enterprise clients, their monthly billing cycles, and API quotas.
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from sqlalchemy.orm import declarative_base, Mapped, mapped_column
-from sqlalchemy import String, Integer, Boolean, DateTime
-from datetime import datetime
+from sqlalchemy import String, Integer, Boolean, DateTime, Float, Text
+from datetime import datetime, timedelta
 import uuid
 
 DATABASE_URL = os.getenv("DATABASE_URL")
@@ -50,6 +50,32 @@ class BroadcastScriptRow(Base):
     word_count_en: Mapped[int] = mapped_column(Integer, default=0)
     word_count_hi: Mapped[int] = mapped_column(Integer, default=0)
     estimated_duration_seconds: Mapped[int] = mapped_column(Integer, default=0)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class AgentMetricRow(Base):
+    __tablename__ = "agent_metrics"
+
+    id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
+    agent_name: Mapped[str] = mapped_column(String, index=True)
+    status: Mapped[str] = mapped_column(String, default="completed")
+    latency_seconds: Mapped[float] = mapped_column(Float, default=0.0)
+    tasks_completed: Mapped[int] = mapped_column(Integer, default=1)
+    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+
+class MediaJobRow(Base):
+    __tablename__ = "media_jobs"
+
+    id: Mapped[str] = mapped_column(String, primary_key=True)
+    script_id: Mapped[str] = mapped_column(String, index=True)
+    headline: Mapped[str] = mapped_column(String, default="")
+    media_type: Mapped[str] = mapped_column(String, default="audio")
+    language: Mapped[str] = mapped_column(String, default="en")
+    status: Mapped[str] = mapped_column(String, default="queued")
+    progress: Mapped[int] = mapped_column(Integer, default=0)
+    duration: Mapped[str] = mapped_column(String, default="--")
+    output_url: Mapped[str] = mapped_column(String, default="")
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 
@@ -214,4 +240,154 @@ async def load_all_scripts() -> list[dict]:
                 "created_at": r.created_at,
             }
             for r in rows
+        ]
+
+
+async def record_agent_metric(agent_name: str, status: str, latency_seconds: float):
+    async with AsyncSessionLocal() as session:
+        session.add(AgentMetricRow(
+            agent_name=agent_name, status=status, latency_seconds=latency_seconds,
+        ))
+        await session.commit()
+
+
+async def get_agent_stats() -> list[dict]:
+    from sqlalchemy import select, func
+    async with AsyncSessionLocal() as session:
+        stmt = (
+            select(
+                AgentMetricRow.agent_name,
+                func.count().label("total"),
+                func.sum(AgentMetricRow.tasks_completed).label("tasks_completed"),
+                func.avg(AgentMetricRow.latency_seconds).label("avg_latency"),
+            )
+            .group_by(AgentMetricRow.agent_name)
+        )
+        result = await session.execute(stmt)
+        rows = result.all()
+
+        latest_stmt = select(AgentMetricRow).order_by(AgentMetricRow.created_at.desc()).limit(50)
+        latest_result = await session.execute(latest_stmt)
+        latest = {r.agent_name: r for r in latest_result.scalars().all()}
+
+        return [
+            {
+                "name": r.agent_name,
+                "tasks_completed": r.tasks_completed or 0,
+                "avg_latency": f"{r.avg_latency:.1f}s" if r.avg_latency else "--",
+                "status": latest[r.agent_name].status if r.agent_name in latest else "idle",
+                "last_run": latest[r.agent_name].created_at.strftime("%H:%M:%S") if r.agent_name in latest else "--",
+            }
+            for r in rows
+        ]
+
+
+async def get_throughput_stats() -> dict:
+    from sqlalchemy import select, func, extract
+    async with AsyncSessionLocal() as session:
+        now = datetime.utcnow()
+        day_ago = now - timedelta(hours=24)
+
+        total_stmt = select(func.count()).select_from(BroadcastScriptRow).where(
+            BroadcastScriptRow.created_at >= day_ago
+        )
+        total_today = (await session.execute(total_stmt)).scalar() or 0
+
+        hourly = []
+        for i in range(23, -1, -1):
+            hour_start = now - timedelta(hours=i + 1)
+            hour_end = now - timedelta(hours=i)
+            count_stmt = select(func.count()).select_from(BroadcastScriptRow).where(
+                BroadcastScriptRow.created_at >= hour_start,
+                BroadcastScriptRow.created_at < hour_end,
+            )
+            count = (await session.execute(count_stmt)).scalar() or 0
+            hourly.append({"hour": hour_end.strftime("%H:00"), "articles": count})
+
+        cat_stmt = (
+            select(BroadcastScriptRow.category, func.count().label("count"))
+            .where(BroadcastScriptRow.created_at >= day_ago)
+            .group_by(BroadcastScriptRow.category)
+            .order_by(func.count().desc())
+            .limit(6)
+        )
+        cat_result = await session.execute(cat_stmt)
+        categories = [{"category": r.category, "count": r.count} for r in cat_result.all()]
+
+        return {
+            "total_today": total_today,
+            "avg_per_hour": round(total_today / 24, 1),
+            "hourly": hourly,
+            "categories": categories,
+        }
+
+
+async def get_revenue_stats() -> dict:
+    from sqlalchemy import select, func
+    async with AsyncSessionLocal() as session:
+        total_clients = (await session.execute(
+            select(func.count()).select_from(ClientAPIKey).where(ClientAPIKey.is_active == True)
+        )).scalar() or 0
+
+        total_requests = (await session.execute(
+            select(func.sum(ClientAPIKey.requests_used)).select_from(ClientAPIKey)
+        )).scalar() or 0
+
+        clients = (await session.execute(
+            select(ClientAPIKey).where(ClientAPIKey.is_active == True)
+        )).scalars().all()
+
+        tier_breakdown = {}
+        for c in clients:
+            tier_breakdown[c.plan_tier] = tier_breakdown.get(c.plan_tier, 0) + 1
+
+        return {
+            "total_clients": total_clients,
+            "total_api_requests": total_requests or 0,
+            "tier_breakdown": tier_breakdown,
+            "clients": [
+                {
+                    "name": c.client_name,
+                    "tier": c.plan_tier,
+                    "requests_used": c.requests_used,
+                    "monthly_quota": c.monthly_quota,
+                }
+                for c in clients
+            ],
+        }
+
+
+async def save_media_job(job_data: dict):
+    async with AsyncSessionLocal() as session:
+        row = MediaJobRow(**job_data)
+        await session.merge(row)
+        await session.commit()
+
+
+async def update_media_job(job_id: str, **kwargs):
+    from sqlalchemy import select
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(select(MediaJobRow).where(MediaJobRow.id == job_id))
+        row = result.scalars().first()
+        if row:
+            for k, v in kwargs.items():
+                setattr(row, k, v)
+            await session.commit()
+
+
+async def get_media_jobs(limit: int = 20) -> list[dict]:
+    from sqlalchemy import select
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(MediaJobRow).order_by(MediaJobRow.created_at.desc()).limit(limit)
+        )
+        return [
+            {
+                "id": r.id, "script_id": r.script_id, "headline": r.headline,
+                "media_type": r.media_type, "language": r.language,
+                "status": r.status, "progress": r.progress,
+                "duration": r.duration, "output_url": r.output_url,
+                "created_at": r.created_at.isoformat(),
+            }
+            for r in result.scalars().all()
         ]

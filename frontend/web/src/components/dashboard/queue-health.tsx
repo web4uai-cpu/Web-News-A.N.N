@@ -1,9 +1,10 @@
 "use client";
 
-import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
 import { useDashboardStore } from "@/lib/store";
 import { Server, Cpu, HardDrive, Wifi, Database, Clock } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { api } from "@/lib/api";
 
 interface QueueMetric {
   label: string;
@@ -16,49 +17,52 @@ interface QueueMetric {
 
 export function QueueHealth() {
   const { isApiOnline, stats } = useDashboardStore();
-  const [metrics, setMetrics] = useState<QueueMetric[]>([]);
 
-  useEffect(() => {
-    const update = () => {
-      setMetrics([
-        {
-          label: "Celery Queue",
-          value: `${Math.floor(Math.random() * 12)}`,
-          max: "50 capacity",
-          pct: Math.floor(Math.random() * 40),
-          color: "from-cyan-500 to-blue-500",
-          Icon: Server,
-        },
-        {
-          label: "Redis Memory",
-          value: `${(Math.random() * 80 + 20).toFixed(0)}MB`,
-          max: "256MB",
-          pct: Math.floor(Math.random() * 30 + 10),
-          color: "from-violet-500 to-purple-500",
-          Icon: Database,
-        },
+  const { data: system } = useQuery({
+    queryKey: ["dashboard-system"],
+    queryFn: () => api.dashboardSystem(),
+    refetchInterval: 5000,
+  });
+
+  const metrics: QueueMetric[] = system
+    ? [
         {
           label: "CPU Load",
-          value: `${(Math.random() * 40 + 10).toFixed(0)}%`,
-          max: "2 cores",
-          pct: Math.floor(Math.random() * 40 + 10),
+          value: `${system.cpu_percent.toFixed(0)}%`,
+          max: "100%",
+          pct: Math.min(system.cpu_percent, 100),
           color: "from-amber-500 to-orange-500",
           Icon: Cpu,
         },
         {
-          label: "Disk I/O",
-          value: `${(Math.random() * 20 + 5).toFixed(1)}MB/s`,
-          max: "100MB/s",
-          pct: Math.floor(Math.random() * 25 + 5),
+          label: "Memory",
+          value: `${system.memory_used_mb.toFixed(0)}MB`,
+          max: `${system.memory_percent.toFixed(0)}%`,
+          pct: Math.min(system.memory_percent, 100),
+          color: "from-violet-500 to-purple-500",
+          Icon: Database,
+        },
+        {
+          label: "Disk Usage",
+          value: `${system.disk_usage_percent.toFixed(0)}%`,
+          max: "100%",
+          pct: Math.min(system.disk_usage_percent, 100),
           color: "from-emerald-500 to-green-500",
           Icon: HardDrive,
         },
-      ]);
-    };
-    update();
-    const id = setInterval(update, 4000);
-    return () => clearInterval(id);
-  }, []);
+        {
+          label: "Scripts in Memory",
+          value: `${system.scripts_in_memory}`,
+          max: "cache",
+          pct: Math.min(system.scripts_in_memory * 2, 100),
+          color: "from-cyan-500 to-blue-500",
+          Icon: Server,
+        },
+      ]
+    : [];
+
+  const redisOnline = system ? system.redis_status === "connected" : true;
+  const celeryOnline = system ? system.celery_status === "connected" : true;
 
   return (
     <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 backdrop-blur-sm">
@@ -75,12 +79,11 @@ export function QueueHealth() {
         </div>
       </div>
 
-      {/* System Status Bar */}
       <div className="mb-4 flex gap-3">
         {[
           { label: "API", online: isApiOnline },
-          { label: "Redis", online: true },
-          { label: "Celery", online: true },
+          { label: "Redis", online: redisOnline },
+          { label: "Celery", online: celeryOnline },
           { label: "Supabase", online: true },
           { label: "LLM", online: true },
         ].map((svc) => (
@@ -91,7 +94,6 @@ export function QueueHealth() {
         ))}
       </div>
 
-      {/* Metric Bars */}
       <div className="space-y-3">
         {metrics.map((m) => (
           <div key={m.label}>
@@ -114,7 +116,6 @@ export function QueueHealth() {
         ))}
       </div>
 
-      {/* Uptime + Jobs */}
       <div className="mt-4 flex gap-4 border-t border-white/5 pt-3">
         <div className="flex items-center gap-1.5 text-[10px] text-muted">
           <Clock className="h-3 w-3" />

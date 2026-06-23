@@ -4,6 +4,7 @@ Full news-to-broadcast pipeline: Ingest → Extract → Script → Translate →
 """
 
 import asyncio
+import time as _time
 from models.schemas import (
     ArticleInput,
     BroadcastScript,
@@ -63,36 +64,55 @@ class NewsPipeline:
             category=article.category.value,
         )
 
+        async def _track(agent_name: str, coro):
+            t0 = _time.time()
+            try:
+                result = await coro
+                latency = round(_time.time() - t0, 2)
+                try:
+                    from models.b2b_database import record_agent_metric
+                    await record_agent_metric(agent_name, "completed", latency)
+                except Exception:
+                    pass
+                return result
+            except Exception as e:
+                latency = round(_time.time() - t0, 2)
+                try:
+                    from models.b2b_database import record_agent_metric
+                    await record_agent_metric(agent_name, "error", latency)
+                except Exception:
+                    pass
+                raise
+
         # Step 1: Extract raw facts
-        facts = await self.fact_extractor.extract(
+        facts = await _track("Fact Extractor", self.fact_extractor.extract(
             raw_text=article.raw_text,
             source_name=article.source_name,
-        )
+        ))
 
         # Step 2: Write the English broadcast script
-        english_script = await self.scriptwriter.write(
+        english_script = await _track("Scriptwriter", self.scriptwriter.write(
             facts=facts,
             category=article.category.value,
-        )
+        ))
 
         # Step 2.5: Critic Review Loop for Best-in-Class Quality
-        is_approved, feedback = await self.critic.review(facts, english_script)
+        is_approved, feedback = await _track("Critic Agent", self.critic.review(facts, english_script))
         if not is_approved:
             log.info("script_rejected_by_critic", feedback=feedback[:100])
-            # Force rewrite based on feedback
-            english_script = await self.scriptwriter.write(
+            english_script = await _track("Scriptwriter", self.scriptwriter.write(
                 facts=facts,
                 category=article.category.value,
                 previous_draft=english_script,
                 feedback=feedback,
-            )
+            ))
         else:
             log.info("script_passed_critic_review")
 
         # Step 3 & 4: Generate headline and translate concurrently
-        headline_task = self.headline_gen.generate(english_script)
+        headline_task = _track("Headline Gen", self.headline_gen.generate(english_script))
         target_languages = ["Hindi", "Spanish", "Mandarin", "French", "Arabic"]
-        translate_task = self.translator.translate(english_script, target_languages=target_languages)
+        translate_task = _track("Translator", self.translator.translate(english_script, target_languages=target_languages))
 
         headline, translations = await asyncio.gather(headline_task, translate_task)
 

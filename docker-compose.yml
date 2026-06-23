@@ -116,7 +116,7 @@ services:
       - ./backend/search-service/.env
     restart: unless-stopped
 
-  # ── Legacy Monolith (serves unextracted routes) ─────────
+  # ── Main Backend (monolith — primary pipeline engine) ────
   ann-backend:
     build:
       context: ./backend
@@ -126,10 +126,18 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8000
+      - REDIS_URL=redis://redis:6379/0
+      - ARTICLE_SERVICE_URL=http://article-service:8002
+      - SEARCH_SERVICE_URL=http://search-service:8005
+      - NOTIFICATION_SERVICE_URL=http://notification-service:8006
+      - ANALYTICS_SERVICE_URL=http://analytics-service:8004
     env_file:
       - ./backend/.env
     volumes:
       - ./backend/output:/app/output
+    depends_on:
+      redis:
+        condition: service_healthy
     restart: unless-stopped
     deploy:
       resources:

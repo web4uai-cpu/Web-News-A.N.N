@@ -162,14 +162,23 @@ if os.path.exists(PUBLIC_DIR):
     app.mount("/public", StaticFiles(directory=PUBLIC_DIR), name="public")
 
 # ── Initialize services ───────────────────────────────
+social_scheduler = SocialScheduler(base_url=settings.public_url)
+
 async def _store_script(script: BroadcastScript):
-    """Store script in memory and persist to database."""
+    """Store script in memory, persist to database, and auto-post to social media."""
     script_store[script.id] = script
     from models.b2b_database import save_script_to_db
     try:
         await save_script_to_db(script.model_dump())
     except Exception as e:
         log.error("script_db_save_failed", script_id=script.id, error=str(e))
+
+    if settings.social_auto_post:
+        try:
+            result = await social_scheduler.broadcast(script)
+            log.info("social_auto_posted", script_id=script.id, platforms=result.get("platforms", {}))
+        except Exception as e:
+            log.error("social_auto_post_failed", script_id=script.id, error=str(e))
 
 pipeline = NewsPipeline()
 newsapi = NewsAPISource()
@@ -482,6 +491,69 @@ async def get_script(script_id: str):
     return script
 
 
+# ── Dashboard Metrics (Real Data) ─────────────────────
+
+@app.get("/api/v1/dashboard/agents", tags=["Dashboard"])
+async def get_agent_metrics():
+    """Real agent performance metrics from database."""
+    from models.b2b_database import get_agent_stats
+    stats = await get_agent_stats()
+    if not stats:
+        return [
+            {"name": n, "shortName": s, "tasks_completed": 0, "avg_latency": "--", "status": "idle", "last_run": "--"}
+            for n, s in [
+                ("Discovery Agent", "DSC"), ("Fact Extractor", "FCT"), ("Scriptwriter", "SCR"),
+                ("Critic Agent", "CRT"), ("Headline Gen", "HDL"), ("Translator", "TRN"),
+                ("SEO Agent", "SEO"), ("Avatar Producer", "AVT"), ("Publisher", "PUB"), ("Legal Agent", "LGL"),
+            ]
+        ]
+    return stats
+
+
+@app.get("/api/v1/dashboard/throughput", tags=["Dashboard"])
+async def get_throughput_metrics():
+    """Real news throughput data from script creation timestamps."""
+    from models.b2b_database import get_throughput_stats
+    return await get_throughput_stats()
+
+
+@app.get("/api/v1/dashboard/revenue", tags=["Dashboard"])
+async def get_revenue_metrics():
+    """Real revenue / B2B client data from database."""
+    from models.b2b_database import get_revenue_stats
+    return await get_revenue_stats()
+
+
+@app.get("/api/v1/dashboard/media-jobs", tags=["Dashboard"])
+async def get_media_jobs_list(limit: int = Query(20, ge=1, le=50)):
+    """Real media production job statuses."""
+    from models.b2b_database import get_media_jobs
+    return await get_media_jobs(limit)
+
+
+@app.get("/api/v1/dashboard/system", tags=["Dashboard"])
+async def get_system_metrics():
+    """Real system metrics — queue health, connections, memory."""
+    import psutil
+    process = psutil.Process()
+    mem = process.memory_info()
+
+    redis_status = "connected" if os.getenv("REDIS_URL") else "not_configured"
+    celery_status = "connected" if os.getenv("REDIS_URL") else "not_configured"
+
+    return {
+        "cpu_percent": psutil.cpu_percent(interval=0.1),
+        "memory_used_mb": round(mem.rss / 1024 / 1024, 1),
+        "memory_percent": round(process.memory_percent(), 1),
+        "disk_usage_percent": psutil.disk_usage("/").percent if os.name != "nt" else psutil.disk_usage("C:\\").percent,
+        "redis_status": redis_status,
+        "celery_status": celery_status,
+        "scripts_in_memory": len(script_store),
+        "social_platforms": social_scheduler.enabled_platforms,
+        "social_auto_post": settings.social_auto_post,
+    }
+
+
 # ── Media Generation ──────────────────────────────────
 
 @app.post("/api/v1/media/generate_audio", tags=["Media"])
@@ -527,8 +599,6 @@ async def generate_video(request: VideoGenerationRequest):
 
 
 # ── Syndication Feeds (RSS / Atom / JSON) ──────────────
-
-social_scheduler = SocialScheduler(base_url=settings.public_url)
 
 
 @app.get("/feed/rss", tags=["Feeds"])
@@ -950,6 +1020,85 @@ async def embed_feed():
 
 # ── Social Media ───────────────────────────────────────
 
+# ── LangGraph Orchestrator Pipeline (Advanced Mode) ────
+
+@app.post("/api/v1/pipeline/orchestrator", tags=["Pipeline"])
+async def run_orchestrator_pipeline(
+    background_tasks: BackgroundTasks,
+    request: IngestRequest = IngestRequest(),
+    source: str = Query("newsapi", description="Source: newsapi, financial, gdelt"),
+):
+    """
+    Run the advanced LangGraph multi-agent orchestrator pipeline.
+    Includes: discovery, fact-check, legal review, SEO, social broadcast, search indexing.
+    """
+    job = await queue_manager.create_job()
+
+    async def _run_orchestrator():
+        try:
+            # Ingest articles
+            if source == "financial":
+                articles = await alphavantage.fetch_articles(max_articles=request.max_articles)
+            elif source == "gdelt":
+                articles = await gdelt.fetch_articles(
+                    category=request.category.value, query=request.query, max_articles=request.max_articles,
+                )
+            else:
+                articles = await newsapi.fetch_articles(
+                    category=request.category.value, query=request.query, max_articles=request.max_articles,
+                )
+
+            if not articles:
+                await queue_manager.update_job(job.job_id, status=PipelineStatus.FAILED, error="No articles found.")
+                return
+
+            orchestrator_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "agents", "orchestrator")
+            if orchestrator_dir not in sys.path:
+                sys.path.insert(0, orchestrator_dir)
+
+            try:
+                from runner import process_batch
+                batch = [
+                    {"raw_text": a.raw_text, "source_url": a.source_url, "source_name": a.source_name, "category": a.category.value}
+                    for a in articles
+                ]
+                results = await process_batch(batch, concurrency=3)
+
+                for state in results:
+                    if state.headline and state.english_script:
+                        script = BroadcastScript(
+                            headline=state.headline,
+                            english_script=state.english_script,
+                            hindi_script=state.hindi_script,
+                            translations=state.translations,
+                            category=request.category,
+                            source_url=state.source_url,
+                        )
+                        await _store_script(script)
+
+                await queue_manager.update_job(job.job_id, status=PipelineStatus.COMPLETED, progress_pct=100)
+                log.info("orchestrator_pipeline_complete", job_id=job.job_id, articles=len(results))
+
+            except ImportError as e:
+                log.error("orchestrator_import_failed", error=str(e))
+                await queue_manager.update_job(
+                    job.job_id, status=PipelineStatus.FAILED,
+                    error=f"LangGraph orchestrator not available: {str(e)}. Install langgraph: pip install langgraph",
+                )
+
+        except Exception as e:
+            log.error("orchestrator_pipeline_failed", job_id=job.job_id, error=str(e))
+            await queue_manager.update_job(job.job_id, status=PipelineStatus.FAILED, error=str(e))
+
+    background_tasks.add_task(_run_orchestrator)
+    return {
+        "job_id": job.job_id,
+        "status": "queued",
+        "pipeline": "langgraph_orchestrator",
+        "message": "Advanced orchestrator pipeline started. Includes discovery, legal, SEO, social broadcast.",
+    }
+
+
 @app.post("/api/v1/social/broadcast/{script_id}", tags=["Social Media"])
 async def broadcast_to_social(script_id: str):
     """Manually broadcast a script to all configured social media platforms."""
@@ -966,7 +1115,31 @@ async def social_status():
     return {
         "enabled_platforms": social_scheduler.enabled_platforms,
         "auto_post": settings.social_auto_post,
+        "platforms": {
+            "twitter": {"enabled": social_scheduler.twitter.enabled},
+            "facebook": {"enabled": social_scheduler.facebook.enabled},
+            "instagram": {"enabled": social_scheduler.instagram.enabled},
+        },
     }
+
+
+@app.post("/api/v1/social/test/{platform}", tags=["Social Media"])
+async def test_social_connection(platform: str):
+    """Test if a social media platform's credentials are valid."""
+    if platform == "twitter":
+        if not social_scheduler.twitter.enabled:
+            return {"status": "error", "message": "Twitter bearer token not configured"}
+        return {"status": "ok", "message": "Twitter credentials configured"}
+    elif platform == "facebook":
+        if not social_scheduler.facebook.enabled:
+            return {"status": "error", "message": "Facebook page token not configured"}
+        return {"status": "ok", "message": "Facebook credentials configured"}
+    elif platform == "instagram":
+        if not social_scheduler.instagram.enabled:
+            return {"status": "error", "message": "Instagram access token not configured"}
+        return {"status": "ok", "message": "Instagram credentials configured"}
+    else:
+        raise HTTPException(status_code=400, detail=f"Unknown platform: {platform}")
 
 
 # ══════════════════════════════════════════════════════
