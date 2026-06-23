@@ -1,24 +1,29 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { useDashboardStore } from "@/lib/store";
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from "recharts";
 import { Newspaper, TrendingUp, Globe, Zap } from "lucide-react";
 import { CAT_COLORS } from "@/lib/utils";
 
+function generateHourlyData(scriptCount: number) {
+  const hours: { hour: string; articles: number }[] = [];
+  for (let i = 23; i >= 0; i--) {
+    const d = new Date();
+    d.setHours(d.getHours() - i);
+    const label = `${String(d.getHours()).padStart(2, "0")}:00`;
+    const count = Math.floor(Math.random() * 15 + (scriptCount > 0 ? 3 : 0));
+    hours.push({ hour: label, articles: count });
+  }
+  return hours;
+}
+
 export function NewsThroughput() {
   const scripts = useDashboardStore((s) => s.scripts);
+  const [hourlyData, setHourlyData] = useState<{ hour: string; articles: number }[]>([]);
 
-  const hourlyData = useMemo(() => {
-    const hours: { hour: string; articles: number }[] = [];
-    for (let i = 23; i >= 0; i--) {
-      const d = new Date();
-      d.setHours(d.getHours() - i);
-      const label = d.toLocaleTimeString("en-US", { hour: "2-digit", hour12: false });
-      const count = Math.floor(Math.random() * 15 + (scripts.length > 0 ? 3 : 0));
-      hours.push({ hour: label, articles: count });
-    }
-    return hours;
+  useEffect(() => {
+    setHourlyData(generateHourlyData(scripts.length));
   }, [scripts.length]);
 
   const categoryBreakdown = useMemo(() => {

@@ -1,8 +1,8 @@
 [build]
-builder = "DOCKERFILE"
-dockerfilePath = "Dockerfile"
+builder = "NIXPACKS"
 
 [deploy]
+startCommand = "uvicorn main:app --host 0.0.0.0 --port ${PORT:-8006} --workers ${WORKERS:-2}"
 healthcheckPath = "/health"
 healthcheckTimeout = 30
 numReplicas = 1

@@ -68,7 +68,7 @@ async def track_event(event: EventCreate):
             entity_id=event.entity_id,
             entity_type=event.entity_type,
             client_id=event.client_id,
-            metadata=event.metadata,
+            event_metadata=event.metadata,
             value=event.value,
         )
         session.add(row)
@@ -95,7 +95,7 @@ async def list_events(
         {
             "id": r.id, "event_type": r.event_type, "entity_id": r.entity_id,
             "entity_type": r.entity_type, "client_id": r.client_id,
-            "metadata": r.metadata, "value": r.value,
+            "metadata": r.event_metadata, "value": r.value,
             "created_at": r.created_at.isoformat(),
         }
         for r in rows

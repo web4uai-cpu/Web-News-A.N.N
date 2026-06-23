@@ -97,9 +97,15 @@ async def lifespan(app: FastAPI):
         log.warning("cache_fallback", error=str(e))
 
     # Initialize SQL Database
-    from models.b2b_database import init_db
+    from models.b2b_database import init_db, load_all_scripts
     await init_db()
     log.info("database_initialized")
+
+    # Load persisted scripts into memory
+    saved_scripts = await load_all_scripts()
+    for s in saved_scripts:
+        script_store[s["id"]] = BroadcastScript(**s)
+    log.info("scripts_loaded_from_db", count=len(saved_scripts))
 
     # Register rate limiters
     rate_limiter.register("llm", rpm=settings.llm_rpm)
@@ -156,6 +162,15 @@ if os.path.exists(PUBLIC_DIR):
     app.mount("/public", StaticFiles(directory=PUBLIC_DIR), name="public")
 
 # ── Initialize services ───────────────────────────────
+async def _store_script(script: BroadcastScript):
+    """Store script in memory and persist to database."""
+    script_store[script.id] = script
+    from models.b2b_database import save_script_to_db
+    try:
+        await save_script_to_db(script.model_dump())
+    except Exception as e:
+        log.error("script_db_save_failed", script_id=script.id, error=str(e))
+
 pipeline = NewsPipeline()
 newsapi = NewsAPISource()
 alphavantage = AlphaVantageSource()
@@ -228,7 +243,7 @@ async def process_raw_news(article: ArticleInput):
     """
     try:
         script = await pipeline.process_single_article(article)
-        script_store[script.id] = script
+        await _store_script(script)
         
         # World-Class Real-Time Push
         try:
@@ -260,7 +275,7 @@ async def ingest_from_newsapi(request: IngestRequest):
         for article in articles:
             try:
                 script = await pipeline.process_single_article(article)
-                script_store[script.id] = script
+                await _store_script(script)
                 scripts.append(script)
             except Exception as e:
                 log.error("article_failed", url=article.source_url, error=str(e))
@@ -290,7 +305,7 @@ async def ingest_financial_news(request: FinancialIngestRequest):
         for article in articles:
             try:
                 script = await pipeline.process_single_article(article)
-                script_store[script.id] = script
+                await _store_script(script)
                 scripts.append(script)
             except Exception as e:
                 log.error("financial_article_failed", error=str(e))
@@ -319,7 +334,7 @@ async def ingest_from_gdelt(request: IngestRequest):
         for article in articles:
             try:
                 script = await pipeline.process_single_article(article)
-                script_store[script.id] = script
+                await _store_script(script)
                 scripts.append(script)
             except Exception as e:
                 log.error("gdelt_article_failed", error=str(e))
@@ -382,13 +397,18 @@ async def run_pipeline(
                 process_news_batch.delay(job.job_id, raw_arts, generate_media)
                 log.info("job_dispatched_to_celery", job_id=job.job_id)
             else:
-                # Local Dev: Use FastAPI BackgroundTasks
-                background_tasks.add_task(
-                    pipeline.run_full_pipeline,
-                    articles=articles,
-                    generate_media=generate_media,
-                    job=job,
-                )
+                async def _run_and_store():
+                    result_job = await pipeline.run_full_pipeline(
+                        articles=articles,
+                        generate_media=generate_media,
+                        job=job,
+                    )
+                    if result_job.scripts:
+                        for script in result_job.scripts:
+                            await _store_script(script)
+                        log.info("pipeline_scripts_stored", count=len(result_job.scripts))
+
+                background_tasks.add_task(_run_and_store)
                 log.info("job_dispatched_to_background", job_id=job.job_id)
 
         except Exception as e:

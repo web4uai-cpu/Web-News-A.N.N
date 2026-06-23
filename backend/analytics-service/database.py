@@ -35,7 +35,7 @@ class AnalyticsEvent(Base):
     entity_id: Mapped[str] = mapped_column(String, index=True, default="")
     entity_type: Mapped[str] = mapped_column(String, default="")
     client_id: Mapped[str] = mapped_column(String, index=True, default="")
-    metadata: Mapped[dict] = mapped_column(JSON, default=dict)
+    event_metadata: Mapped[dict] = mapped_column("metadata", JSON, default=dict)
     value: Mapped[float] = mapped_column(Float, default=0.0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow, index=True)
 
@@ -53,5 +53,8 @@ class AgentMetric(Base):
 
 
 async def init_db():
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        pass
