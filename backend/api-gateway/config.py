@@ -21,7 +21,7 @@ class GatewaySettings(BaseSettings):
     # Legacy monolith (used during migration — routes not yet extracted go here)
     monolith_url: str = Field(default="http://localhost:8080", description="Legacy monolith backend URL")
 
-    # Rate limiting
+    # Rate limiting (REDIS_URL auto-injected by Railway)
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis URL for rate limiting")
     rate_limit_anonymous_rpm: int = Field(default=60, description="Anonymous requests per minute per IP")
     rate_limit_authenticated_rpm: int = Field(default=600, description="Authenticated requests per minute per key")

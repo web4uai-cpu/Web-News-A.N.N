@@ -1,0 +1,51 @@
+# ── Environment ──────────────────────────────
+.env
+.env.local
+.env.production
+.env.*.local
+!.env.example
+!.env.railway
+
+# ── Python ───────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+dist/
+build/
+.venv/
+venv/
+*.egg
+
+# ── Node ─────────────────────────────────────
+node_modules/
+.next/
+out/
+.vercel/
+
+# ── IDE ──────────────────────────────────────
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# ── Output ───────────────────────────────────
+backend/output/
+*.mp3
+*.mp4
+*.wav
+
+# ── Terraform ────────────────────────────────
+.terraform/
+*.tfstate
+*.tfstate.backup
+*.tfvars.json
+
+# ── Database ─────────────────────────────────
+*.sqlite
+*.db
+
+# ── Logs ─────────────────────────────────────
+*.log
+logs/

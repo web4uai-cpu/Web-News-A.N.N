@@ -1,0 +1,15 @@
+# ============================================
+# A.N.N. — Railway Project Configuration
+# ============================================
+# This file configures the monorepo deployment.
+# Each service is defined separately in its own railway.toml
+# This root file is used when deploying single-service mode.
+
+[build]
+builder = "DOCKERFILE"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 30
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5

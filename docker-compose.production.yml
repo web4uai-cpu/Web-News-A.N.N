@@ -1,0 +1,153 @@
+version: '3.8'
+
+# ============================================
+# A.N.N. — Production-Like Local Stack
+# ============================================
+# Mirrors Railway deployment for local testing.
+# Usage: docker-compose -f docker-compose.production.yml up --build
+
+services:
+
+  # ── PostgreSQL (mirrors Railway Postgres plugin) ───
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: ann_db
+      POSTGRES_USER: ann_admin
+      POSTGRES_PASSWORD: ann_local_password_change_me
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ann_admin -d ann_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── Redis (mirrors Railway Redis plugin) ───────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass ann_redis_password
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "ann_redis_password", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── API Gateway ────────────────────────────────────
+  api-gateway:
+    build:
+      context: ./backend/api-gateway
+    ports:
+      - "8000:8000"
+    environment:
+      PORT: "8000"
+      WORKERS: "1"
+      LOG_LEVEL: info
+      CORS_ORIGINS: "http://localhost:3000,http://localhost:3001"
+      AUTH_SERVICE_URL: http://auth-service:8001
+      ARTICLE_SERVICE_URL: http://article-service:8002
+      VIDEO_SERVICE_URL: http://video-service:8003
+      NOTIFICATION_SERVICE_URL: http://notification-service:8004
+      ANALYTICS_SERVICE_URL: http://analytics-service:8005
+      SEARCH_SERVICE_URL: http://search-service:8006
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Auth Service ───────────────────────────────────
+  auth-service:
+    build:
+      context: ./backend/auth-service
+    environment:
+      PORT: "8001"
+      WORKERS: "1"
+      DATABASE_URL: postgresql://ann_admin:ann_local_password_change_me@postgres:5432/ann_db
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Article Service ────────────────────────────────
+  article-service:
+    build:
+      context: ./backend/article-service
+    environment:
+      PORT: "8002"
+      WORKERS: "1"
+      DATABASE_URL: postgresql://ann_admin:ann_local_password_change_me@postgres:5432/ann_db
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Video Service ──────────────────────────────────
+  video-service:
+    build:
+      context: ./backend/video-service
+    environment:
+      PORT: "8003"
+      WORKERS: "1"
+      DATABASE_URL: postgresql://ann_admin:ann_local_password_change_me@postgres:5432/ann_db
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    env_file:
+      - ./backend/video-service/.env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Notification Service ───────────────────────────
+  notification-service:
+    build:
+      context: ./backend/notification-service
+    environment:
+      PORT: "8004"
+      WORKERS: "1"
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    depends_on:
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Analytics Service ──────────────────────────────
+  analytics-service:
+    build:
+      context: ./backend/analytics-service
+    environment:
+      PORT: "8005"
+      WORKERS: "1"
+      DATABASE_URL: postgresql://ann_admin:ann_local_password_change_me@postgres:5432/ann_db
+      REDIS_URL: redis://default:ann_redis_password@redis:6379
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # ── Search Service ─────────────────────────────────
+  search-service:
+    build:
+      context: ./backend/search-service
+    environment:
+      PORT: "8006"
+      WORKERS: "1"
+      DATABASE_URL: postgresql://ann_admin:ann_local_password_change_me@postgres:5432/ann_db
+      ARTICLE_SERVICE_URL: http://article-service:8002
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
+volumes:
+  postgres_data:
