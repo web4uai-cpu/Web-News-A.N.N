@@ -11,28 +11,35 @@ from sqlalchemy import String, Integer, Boolean, DateTime, Float, Text
 from datetime import datetime, timedelta
 import uuid
 
-DATABASE_URL = os.getenv("DATABASE_URL")
+DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ann_enterprise.db")
+SQLITE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
 
-if not DATABASE_URL:
-    DB_PATH = os.path.join(os.path.dirname(os.path.dirname(__file__)), "ann_enterprise.db")
-    DATABASE_URL = f"sqlite+aiosqlite:///{DB_PATH}"
+_raw_url = os.getenv("DATABASE_URL")
+
+if not _raw_url:
+    DATABASE_URL = SQLITE_URL
 else:
-    # Upgrade standard Postgres connection strings to asyncpg for FastAPI non-blocking speed
-    if DATABASE_URL.startswith("postgres://"):
-        DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql+asyncpg://", 1)
-    elif DATABASE_URL.startswith("postgresql://"):
-        DATABASE_URL = DATABASE_URL.replace("postgresql://", "postgresql+asyncpg://", 1)
+    if _raw_url.startswith("postgres://"):
+        DATABASE_URL = _raw_url.replace("postgres://", "postgresql+asyncpg://", 1)
+    elif _raw_url.startswith("postgresql://"):
+        DATABASE_URL = _raw_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    else:
+        DATABASE_URL = _raw_url
 
-engine_kwargs = {"echo": False}
-if "postgresql" in DATABASE_URL:
-    engine_kwargs.update({
-        "pool_size": int(os.getenv("DB_POOL_SIZE", "20")),
-        "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
-        "pool_timeout": 30,
-        "pool_recycle": 1800,
-    })
 
-engine = create_async_engine(DATABASE_URL, **engine_kwargs)
+def _build_engine(url: str):
+    kwargs = {"echo": False}
+    if "postgresql" in url:
+        kwargs.update({
+            "pool_size": int(os.getenv("DB_POOL_SIZE", "20")),
+            "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
+            "pool_timeout": 30,
+            "pool_recycle": 1800,
+        })
+    return create_async_engine(url, **kwargs)
+
+
+engine = _build_engine(DATABASE_URL)
 AsyncSessionLocal = async_sessionmaker(bind=engine, expire_on_commit=False)
 
 Base = declarative_base()
@@ -100,9 +107,20 @@ class ClientAPIKey(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 async def init_db():
-    """Create the SQLite tables if they do not exist."""
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
+    """Create tables. Falls back to local SQLite if the remote DB is unreachable."""
+    global engine, AsyncSessionLocal, DATABASE_URL
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+    except Exception:
+        if "sqlite" not in DATABASE_URL:
+            import logging
+            logging.getLogger(__name__).warning("Remote DB unreachable, falling back to local SQLite")
+            DATABASE_URL = SQLITE_URL
+            engine = _build_engine(SQLITE_URL)
+            AsyncSessionLocal.configure(bind=engine)
+            async with engine.begin() as conn:
+                await conn.run_sync(Base.metadata.create_all)
         
     # Seed a demo key for the developer to test with immediately
     async with AsyncSessionLocal() as session:
