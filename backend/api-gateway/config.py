@@ -17,6 +17,7 @@ class GatewaySettings(BaseSettings):
     analytics_service_url: str = Field(default="http://localhost:8004", description="Analytics service base URL")
     search_service_url: str = Field(default="http://localhost:8005", description="Search service base URL")
     notification_service_url: str = Field(default="http://localhost:8006", description="Notification service base URL")
+    monolith_url: str = Field(default="http://localhost:8080", description="Legacy monolith base URL")
 
     # Rate limiting (REDIS_URL auto-injected by Railway)
     redis_url: str = Field(default="redis://localhost:6379/0", description="Redis URL for rate limiting")

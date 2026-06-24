@@ -340,6 +340,37 @@ async def dashboard_system():
 
 # ── Scripts endpoint (so dashboard can fetch scripts directly) ──
 
+class ScriptSync(BaseModel):
+    id: str
+    headline: str
+    english_script: str
+    hindi_script: str = ""
+    category: str = "general"
+    source_url: str = ""
+    word_count_en: int = 0
+    word_count_hi: int = 0
+    estimated_duration_seconds: int = 0
+
+
+@app.post("/api/v1/scripts/sync")
+async def sync_script(data: ScriptSync):
+    async with AsyncSessionLocal() as session:
+        existing = (await session.execute(
+            select(BroadcastScriptRow).where(BroadcastScriptRow.id == data.id)
+        )).scalars().first()
+        if not existing:
+            row = BroadcastScriptRow(
+                id=data.id, headline=data.headline,
+                english_script=data.english_script, hindi_script=data.hindi_script,
+                category=data.category, source_url=data.source_url,
+                word_count_en=data.word_count_en, word_count_hi=data.word_count_hi,
+                estimated_duration_seconds=data.estimated_duration_seconds,
+            )
+            session.add(row)
+            await session.commit()
+    return {"status": "synced"}
+
+
 @app.get("/api/v1/scripts")
 async def list_scripts(limit: int = Query(20, ge=1, le=100)):
     async with AsyncSessionLocal() as session:

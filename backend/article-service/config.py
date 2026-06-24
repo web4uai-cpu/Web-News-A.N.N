@@ -20,7 +20,7 @@ class ArticleSettings(BaseSettings):
     llm_base_url: str = Field(default="https://generativelanguage.googleapis.com/v1beta/openai", description="LLM API base URL")
     news_api_key: str = Field(default="", description="NewsAPI.org API Key")
     alpha_vantage_key: str = Field(default="", description="Alpha Vantage API Key")
-    analytics_service_url: str = Field(default="http://localhost:8005", description="Analytics service URL")
+    analytics_service_url: str = Field(default="http://localhost:8004", description="Analytics service URL")
 
     class Config:
         env_file = ".env"
