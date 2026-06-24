@@ -1,13 +1,20 @@
 import { create } from "zustand";
-import { supabase } from "./supabase";
-import type { User } from "@supabase/supabase-js";
+import { auth } from "./firebase";
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
+  sendPasswordResetEmail,
+  type User,
+} from "firebase/auth";
 
 interface AuthState {
   user: User | null;
   loading: boolean;
   error: string | null;
 
-  initialize: () => Promise<void>;
+  initialize: () => void;
   signIn: (email: string, password: string) => Promise<void>;
   signUp: (email: string, password: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -20,43 +27,43 @@ export const useAuthStore = create<AuthState>((set) => ({
   loading: true,
   error: null,
 
-  initialize: async () => {
-    const { data } = await supabase.auth.getSession();
-    set({ user: data.session?.user ?? null, loading: false });
-
-    supabase.auth.onAuthStateChange((_event, session) => {
-      set({ user: session?.user ?? null });
+  initialize: () => {
+    onAuthStateChanged(auth, (user) => {
+      set({ user, loading: false });
     });
   },
 
   signIn: async (email, password) => {
     set({ error: null });
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) set({ error: error.message });
+    try {
+      await signInWithEmailAndPassword(auth, email, password);
+    } catch (e: unknown) {
+      set({ error: (e as Error).message });
+    }
   },
 
   signUp: async (email, password) => {
     set({ error: null });
-    const { error } = await supabase.auth.signUp({ email, password });
-    if (error) {
-      set({ error: error.message });
-    } else {
-      set({ error: "Check your email to verify your account." });
+    try {
+      await createUserWithEmailAndPassword(auth, email, password);
+    } catch (e: unknown) {
+      set({ error: (e as Error).message });
     }
   },
 
   signOut: async () => {
-    await supabase.auth.signOut();
+    await firebaseSignOut(auth);
     set({ user: null });
   },
 
   resetPassword: async (email) => {
     set({ error: null });
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${window.location.origin}/portal`,
-    });
-    if (error) set({ error: error.message });
-    else set({ error: "Reset link sent to your email." });
+    try {
+      await sendPasswordResetEmail(auth, email);
+      set({ error: "Reset link sent to your email." });
+    } catch (e: unknown) {
+      set({ error: (e as Error).message });
+    }
   },
 
   clearError: () => set({ error: null }),

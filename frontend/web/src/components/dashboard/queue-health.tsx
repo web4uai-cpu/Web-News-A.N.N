@@ -84,7 +84,7 @@ export function QueueHealth() {
           { label: "API", online: isApiOnline },
           { label: "Redis", online: redisOnline },
           { label: "Celery", online: celeryOnline },
-          { label: "Supabase", online: true },
+          { label: "Firebase", online: true },
           { label: "LLM", online: true },
         ].map((svc) => (
           <div key={svc.label} className="flex items-center gap-1 text-[10px]">

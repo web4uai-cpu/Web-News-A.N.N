@@ -49,3 +49,5 @@ backend/output/
 # ── Logs ─────────────────────────────────────
 *.log
 logs/
+
+.vercel
