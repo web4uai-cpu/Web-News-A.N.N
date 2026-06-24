@@ -1,12 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "name": "ann-frontend",
   "framework": "nextjs",
   "buildCommand": "cd frontend/web && npm install && npm run build",
   "outputDirectory": "frontend/web/.next",
   "installCommand": "cd frontend/web && npm install",
   "devCommand": "cd frontend/web && npm run dev",
-  "rootDirectory": ".",
   "regions": ["iad1"],
   "headers": [
     {
