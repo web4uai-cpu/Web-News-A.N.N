@@ -838,66 +838,66 @@ async def stripe_webhook(request: Request):
 # ── B2B Client Portal Secure Routes ────────────────────
 
 from fastapi import HTTPException, Header
+from models.b2b_database import AsyncSessionLocal, ClientAPIKey
+from sqlalchemy import select
+
+
+async def _get_active_client(api_key: str) -> ClientAPIKey:
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
+        )
+        client = result.scalars().first()
+        if not client:
+            raise HTTPException(status_code=401, detail="Invalid or suspended API Key.")
+        return client
+
 
 @app.get("/api/v1/b2b/portal/metrics", tags=["B2B Client Portal"])
 async def get_client_portal_metrics(api_key: str = Header(..., alias="X-ANN-API-Key")):
     """Validates the B2B Client and returns securely isolated tracking metrics for their Portal Dashboard."""
-    db = next(get_client_db())
-    client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
-    if not client:
-        raise HTTPException(status_code=401, detail="Invalid or suspended API Key.")
-    
+    client = await _get_active_client(api_key)
     return {
         "client_name": client.client_name,
         "plan_tier": client.plan_tier,
         "requests_used": client.requests_used,
-        "monthly_quota": client.monthly_quota
+        "monthly_quota": client.monthly_quota,
     }
+
 
 @app.post("/api/v1/b2b/portal/social-keys", tags=["B2B Client Portal"])
 async def link_client_social_keys(ig_token: str = "", fb_page_id: str = "", linkedin_token: str = "", api_key: str = Header(..., alias="X-ANN-API-Key")):
     """Saves custom social media keys for Creator Tier Auto-Pilot, including LinkedIn for Corporate Influencers."""
-    db = next(get_client_db())
-    client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
-    if not client:
-        raise HTTPException(status_code=401, detail="Invalid API Key.")
-        
-    # In production, these should be encrypted at rest using Fernet before saving to the DB.
-    # client.custom_ig_token = ig_token
-    # client.custom_fb_id = fb_page_id
-    # client.custom_linkedin_token = linkedin_token
-    # db.commit()
-    
+    client = await _get_active_client(api_key)
     log.info("b2b_socials_linked", client=client.client_name, ig_connected=bool(ig_token), linkedin_connected=bool(linkedin_token))
     return {"status": "success", "message": "Social Accounts Linked Successfully! A.N.N will now post your custom generations directly to your feeds."}
+
 
 @app.post("/api/v1/b2b/portal/generate", tags=["B2B Client Portal"])
 async def trigger_client_studio_generation(topic: str, background_tasks: BackgroundTasks, api_key: str = Header(..., alias="X-ANN-API-Key")):
     """The 'On-Demand AI Studio' Route. Burns 50 quota requests to spin the autonomous pipeline for a custom keyword."""
-    db = next(get_client_db())
-    client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
-    if not client:
-        raise HTTPException(status_code=401, detail="Invalid API Key.")
-    
-    # 🔒 STRICT TIER ENFORCEMENT 
-    if client.plan_tier != "enterprise":
-        raise HTTPException(status_code=403, detail=f"Your current tier ({client.plan_tier}) does not include On-Demand Studio access. Please upgrade to Enterprise.")
-    
-    cost_multiplier = 50
-    if client.requests_used + cost_multiplier > client.monthly_quota:
-        raise HTTPException(status_code=402, detail="Insufficient API Validation Quota. Please upgrade your Stripe plan.")
-    
-    # Deduct quota securely
-    client.requests_used += cost_multiplier
-    db.commit()
-    
-    # ── INFINITE QUEUE SYMPHONY ──
-    # Instantly push the heavy execution payload directly into the Redis Queue.
-    # Celery robustly executes it on a discrete worker node guaranteeing 100% API uptime.
-    from backend.services.tasks import b2b_distributed_pipeline_task
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
+        )
+        client = result.scalars().first()
+        if not client:
+            raise HTTPException(status_code=401, detail="Invalid API Key.")
+
+        if client.plan_tier != "enterprise":
+            raise HTTPException(status_code=403, detail=f"Your current tier ({client.plan_tier}) does not include On-Demand Studio access. Please upgrade to Enterprise.")
+
+        cost_multiplier = 50
+        if client.requests_used + cost_multiplier > client.monthly_quota:
+            raise HTTPException(status_code=402, detail="Insufficient API Validation Quota. Please upgrade your Stripe plan.")
+
+        client.requests_used += cost_multiplier
+        await session.commit()
+
+    from services.tasks import b2b_distributed_pipeline_task
     task = b2b_distributed_pipeline_task.delay(topic=topic, api_key=api_key)
     log.info("b2b_client_triggered_studio", client=client.client_name, topic=topic, quota_billed=cost_multiplier, celery_task_id=task.id)
-    
+
     return {"status": "processing", "message": f"Pipeline queued for '{topic}'. Deducted {cost_multiplier} quota.", "task_id": task.id}
 
 # ── High-Performance Distributed WebSocket Symphony ──
@@ -986,9 +986,12 @@ async def breaking_news_stream(websocket: WebSocket, api_key: str = Query(None))
     if not api_key:
         await websocket.close(code=1008, reason="Missing API Authentication.")
         return
-        
-    db = next(get_client_db())
-    client = db.query(B2BClient).filter(B2BClient.api_key == api_key, B2BClient.is_active == True).first()
+
+    async with AsyncSessionLocal() as session:
+        result = await session.execute(
+            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
+        )
+        client = result.scalars().first()
     if not client:
         await websocket.close(code=1008, reason="Invalid or Suspended API Key.")
         return
