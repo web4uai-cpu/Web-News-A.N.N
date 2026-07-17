@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/auth-store";
-import { Loader2 } from "lucide-react";
+import { Button } from "@/components/ui";
 
 type Mode = "login" | "signup" | "reset";
 
@@ -51,6 +51,8 @@ export function LoginScreen() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             placeholder="Corporate Email"
+            aria-label="Corporate email"
+            autoComplete="email"
             required
             className={inputClass}
           />
@@ -60,25 +62,27 @@ export function LoginScreen() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Passphrase"
+              aria-label="Passphrase"
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
               required
               className={inputClass}
             />
           )}
 
-          <button
+          <Button
             type="submit"
-            disabled={submitting}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-purple-700 py-4 text-lg font-bold text-white uppercase tracking-wider hover:shadow-lg hover:shadow-violet-500/30 transition-all disabled:opacity-50"
+            size="lg"
+            loading={submitting}
+            className="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-purple-700 py-4 text-lg font-bold uppercase tracking-wider hover:shadow-lg hover:shadow-violet-500/30"
           >
-            {submitting && <Loader2 className="h-5 w-5 animate-spin" />}
             {mode === "login" && "Secure Logon"}
             {mode === "signup" && "Deploy Instance"}
             {mode === "reset" && "Transmit Reset Link"}
-          </button>
+          </Button>
         </form>
 
         {error && (
-          <div className="mt-4 text-sm text-red-400">{error}</div>
+          <div role="alert" className="mt-4 text-sm text-red-400">{error}</div>
         )}
 
         <div className="mt-5 flex flex-col gap-3">

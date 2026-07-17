@@ -3,13 +3,8 @@
 import { DollarSign, TrendingUp, Users, CreditCard, ArrowUpRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { api } from "@/lib/api";
-
-const TIER_COLORS: Record<string, string> = {
-  free: "#64748b",
-  starter: "#06b6d4",
-  pro: "#8b5cf6",
-  enterprise: "#10b981",
-};
+import { TIER_COLORS } from "@/lib/chart-theme";
+import { Card } from "@/components/ui";
 
 export function RevenuePanel() {
   const { data } = useQuery({
@@ -57,7 +52,7 @@ export function RevenuePanel() {
   ];
 
   return (
-    <div className="rounded-xl border border-white/5 bg-white/[0.02] p-5 backdrop-blur-sm">
+    <Card className="rounded-xl p-5">
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-sm font-semibold">
           <DollarSign className="h-4 w-4 text-emerald-400" />
@@ -89,7 +84,7 @@ export function RevenuePanel() {
             {tierEntries.map(([tier, count]) => (
               <div key={tier} className="flex items-center justify-between rounded-lg bg-white/5 px-3 py-2">
                 <div className="flex items-center gap-2">
-                  <span className="h-2.5 w-2.5 rounded-full" style={{ background: TIER_COLORS[tier] || "#8b5cf6" }} />
+                  <span aria-hidden className="h-2.5 w-2.5 rounded-full" style={{ background: TIER_COLORS[tier] || TIER_COLORS.pro }} />
                   <span className="text-xs font-medium capitalize">{tier}</span>
                 </div>
                 <span className="text-xs font-bold">{count} clients</span>
@@ -122,6 +117,6 @@ export function RevenuePanel() {
           </div>
         </div>
       </div>
-    </div>
+    </Card>
   );
 }

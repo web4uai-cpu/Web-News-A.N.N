@@ -7,6 +7,7 @@ import { useDashboardStore } from "@/lib/store";
 import { useToastStore } from "@/components/ui/toast";
 import { PIPELINE_STEPS } from "@/lib/utils";
 import { Rocket } from "lucide-react";
+import { Button } from "@/components/ui";
 
 const SOURCES = [
   { value: "newsapi", label: "📰 NewsAPI" },
@@ -55,14 +56,14 @@ export function PipelineControl() {
   }, [source, category, query, maxArticles, generateMedia]);
 
   const selectClass =
-    "w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-sm text-white outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30";
+    "w-full rounded-lg border border-edge-strong bg-surface px-3 py-2 text-sm text-foreground outline-none focus:border-indigo-500/50 focus:ring-1 focus:ring-indigo-500/30";
 
   return (
     <motion.section
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.25 }}
-      className="rounded-xl border border-white/5 bg-white/[0.02] p-5 backdrop-blur-sm"
+      className="rounded-xl border border-edge bg-surface p-5 backdrop-blur-sm"
     >
       <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold">
         🎛️ Pipeline Control
@@ -70,8 +71,8 @@ export function PipelineControl() {
 
       <div className="flex flex-wrap items-end gap-3">
         <div className="min-w-[140px]">
-          <label className="mb-1 block text-xs text-muted">Source</label>
-          <select className={selectClass} value={source} onChange={(e) => setSource(e.target.value)}>
+          <label htmlFor="pc-source" className="mb-1 block text-xs text-muted">Source</label>
+          <select id="pc-source" className={selectClass} value={source} onChange={(e) => setSource(e.target.value)}>
             {SOURCES.map((s) => (
               <option key={s.value} value={s.value}>{s.label}</option>
             ))}
@@ -79,8 +80,8 @@ export function PipelineControl() {
         </div>
 
         <div className="min-w-[130px]">
-          <label className="mb-1 block text-xs text-muted">Category</label>
-          <select className={selectClass} value={category} onChange={(e) => setCategory(e.target.value)}>
+          <label htmlFor="pc-category" className="mb-1 block text-xs text-muted">Category</label>
+          <select id="pc-category" className={selectClass} value={category} onChange={(e) => setCategory(e.target.value)}>
             {CATEGORY_OPTIONS.map((c) => (
               <option key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</option>
             ))}
@@ -88,8 +89,9 @@ export function PipelineControl() {
         </div>
 
         <div className="flex-1 min-w-[200px]">
-          <label className="mb-1 block text-xs text-muted">Search Query</label>
+          <label htmlFor="pc-query" className="mb-1 block text-xs text-muted">Search Query</label>
           <input
+            id="pc-query"
             className={selectClass}
             placeholder="e.g. AI regulation, climate summit..."
             value={query}
@@ -98,8 +100,9 @@ export function PipelineControl() {
         </div>
 
         <div className="w-20">
-          <label className="mb-1 block text-xs text-muted">Max</label>
+          <label htmlFor="pc-max" className="mb-1 block text-xs text-muted">Max</label>
           <input
+            id="pc-max"
             type="number"
             className={selectClass}
             value={maxArticles}
@@ -119,14 +122,10 @@ export function PipelineControl() {
           Media
         </label>
 
-        <button
-          onClick={runPipeline}
-          disabled={running}
-          className="flex items-center gap-2 rounded-lg bg-indigo-600 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-500 disabled:opacity-50 transition-colors"
-        >
-          <Rocket className="h-4 w-4" />
+        <Button onClick={runPipeline} loading={running}>
+          <Rocket className="h-4 w-4" aria-hidden />
           {running ? "Running..." : "Run Pipeline"}
-        </button>
+        </Button>
       </div>
 
       {/* Pipeline Steps */}
