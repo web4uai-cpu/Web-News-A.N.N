@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { Radio, Search, Menu } from "lucide-react";
+import { Radio } from "lucide-react";
+import { LocaleToggle, ThemeToggle } from "@/components/ui";
 
 export function HomeNav() {
   const [clock, setClock] = useState("");
@@ -45,6 +46,8 @@ export function HomeNav() {
         </div>
 
         <div className="flex items-center gap-3">
+          <LocaleToggle />
+          <ThemeToggle />
           <div className="flex items-center gap-1.5">
             <span className="live-dot h-2 w-2 rounded-full bg-red-500" />
             <span className="text-[10px] font-black text-red-400">LIVE</span>

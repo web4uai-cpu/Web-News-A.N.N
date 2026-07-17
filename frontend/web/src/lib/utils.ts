@@ -1,3 +1,8 @@
+/** Minimal class-name combiner (clsx-style, no dependency). */
+export function cn(...classes: Array<string | false | null | undefined>): string {
+  return classes.filter(Boolean).join(" ");
+}
+
 export function formatUptime(seconds: number): string {
   if (seconds < 60) return `${Math.floor(seconds)}s`;
   if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
