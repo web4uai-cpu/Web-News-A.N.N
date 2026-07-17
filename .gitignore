@@ -46,8 +46,12 @@ backend/output/
 *.sqlite
 *.db
 
-# ── Logs ─────────────────────────────────────
+# ── Logs & debug artifacts ───────────────────
 *.log
 logs/
-
-.vercel
+error.txt
+openai_error.txt
+test_out.txt
+output.txt
+startup_error.txt
+debug.xml
