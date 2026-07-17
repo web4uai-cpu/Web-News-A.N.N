@@ -60,14 +60,23 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        service:
-          - api-gateway
-          - auth-service
-          - article-service
-          - video-service
-          - notification-service
-          - analytics-service
-          - search-service
+        include:
+          - service: ann-backend
+            context: backend
+          - service: api-gateway
+            context: backend/api-gateway
+          - service: auth-service
+            context: backend/auth-service
+          - service: article-service
+            context: backend/article-service
+          - service: video-service
+            context: backend/video-service
+          - service: notification-service
+            context: backend/notification-service
+          - service: analytics-service
+            context: backend/analytics-service
+          - service: search-service
+            context: backend/search-service
     permissions:
       contents: read
       packages: write
@@ -84,7 +93,7 @@ jobs:
       - name: Build and push
         uses: docker/build-push-action@v5
         with:
-          context: backend/${{ matrix.service }}
+          context: ${{ matrix.context }}
           push: true
           tags: |
             ${{ env.IMAGE_PREFIX }}/${{ matrix.service }}:${{ github.sha }}
@@ -105,13 +114,13 @@ jobs:
 
       - name: Deploy to staging
         run: |
-          for svc in api-gateway auth-service article-service video-service notification-service analytics-service search-service; do
+          for svc in ann-backend api-gateway auth-service article-service video-service notification-service analytics-service search-service; do
             kubectl set image deployment/$svc $svc=${{ env.IMAGE_PREFIX }}/$svc:${{ github.sha }} -n ann-staging
           done
 
       - name: Verify rollout
         run: |
-          for svc in api-gateway auth-service article-service video-service notification-service analytics-service search-service; do
+          for svc in ann-backend api-gateway auth-service article-service video-service notification-service analytics-service search-service; do
             kubectl rollout status deployment/$svc -n ann-staging --timeout=300s
           done
 

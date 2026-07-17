@@ -11,3 +11,25 @@ service only when load or team boundaries justify it.
 
 Known gaps in the parallel services: duplicated demo seed data, duplicated
 `ClientAPIKey` model, and the api-gateway WebSocket proxy is incomplete.
+
+## Running the stacks
+
+- **Default (monolith)**: `docker compose up` — ann-backend (:8080→8000) + redis +
+  celery + prometheus + grafana. Security env passthrough: `ENV`, `ADMIN_SECRET`,
+  `CORS_ORIGINS`, `FIREBASE_PROJECT_ID` (host env or `.env`).
+- **Microservices (opt-in)**: `docker compose --profile services up` adds the
+  gateway (:8000) and the 6 services.
+- **Kubernetes**: `infrastructure/kubernetes/ann-backend.yaml` is the primary
+  Deployment (+Service+HPA); `services.yaml` holds the extraction-target services.
+  CI builds/pushes `ann-backend` alongside the service images and deploys all to staging.
+
+## Extraction path (when a service graduates)
+
+1. The service owns its data: give it real tables/migrations, delete the duplicated
+   models, and stop reading the monolith's DB.
+2. Point the monolith at it: swap the in-process import for an HTTP call using the
+   `*_SERVICE_URL` settings already present in `backend/config.py`.
+3. Route it: enable the path prefix in `api-gateway/routes` so external traffic
+   bypasses the monolith.
+4. Delete the corresponding router from `backend/routers/` once traffic is fully cut over.
+Extract only when load or team boundaries justify it — never speculatively.

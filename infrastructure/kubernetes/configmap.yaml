@@ -15,3 +15,4 @@ data:
   MONOLITH_URL: "http://ann-backend:8080"
   PUBLIC_URL: "https://ann.network"
   CORS_ORIGINS: "https://ann.network,https://www.ann.network"
+  FIREBASE_PROJECT_ID: ""  # set to the Firebase project id used by the frontend

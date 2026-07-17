@@ -1,9 +1,10 @@
-version: '3.8'
-
+# Default stack = the modular monolith (ann-backend) + redis + celery + monitoring.
+# The experimental microservices layer is opt-in:  docker compose --profile services up
 services:
 
-  # ── API Gateway (public entry point) ────────────────────
+  # ── API Gateway (microservices entry point — opt-in) ────
   api-gateway:
+    profiles: ["services"]
     build:
       context: ./backend/api-gateway
       dockerfile: Dockerfile
@@ -18,7 +19,7 @@ services:
       - ANALYTICS_SERVICE_URL=http://analytics-service:8004
       - SEARCH_SERVICE_URL=http://search-service:8005
       - REDIS_URL=redis://redis:6379/0
-      - CORS_ORIGINS=*
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000}
     depends_on:
       redis:
         condition: service_healthy
@@ -28,6 +29,7 @@ services:
 
   # ── Auth Service ────────────────────────────────────────
   auth-service:
+    profiles: ["services"]
     build:
       context: ./backend/auth-service
       dockerfile: ../api-gateway/Dockerfile
@@ -36,7 +38,8 @@ services:
     environment:
       - PORT=8001
     env_file:
-      - ./backend/auth-service/.env
+      - path: ./backend/auth-service/.env
+        required: false
     depends_on:
       redis:
         condition: service_healthy
@@ -44,6 +47,7 @@ services:
 
   # ── Article Service ─────────────────────────────────────
   article-service:
+    profiles: ["services"]
     build:
       context: ./backend/article-service
       dockerfile: ../api-gateway/Dockerfile
@@ -52,11 +56,13 @@ services:
     environment:
       - PORT=8002
     env_file:
-      - ./backend/article-service/.env
+      - path: ./backend/article-service/.env
+        required: false
     restart: unless-stopped
 
   # ── Video Service ──────────────────────────────────────
   video-service:
+    profiles: ["services"]
     build:
       context: ./backend/video-service
       dockerfile: ../api-gateway/Dockerfile
@@ -65,7 +71,8 @@ services:
     environment:
       - PORT=8003
     env_file:
-      - ./backend/video-service/.env
+      - path: ./backend/video-service/.env
+        required: false
     volumes:
       - ./backend/output:/app/output
     depends_on:
@@ -75,6 +82,7 @@ services:
 
   # ── Notification Service ────────────────────────────────
   notification-service:
+    profiles: ["services"]
     build:
       context: ./backend/notification-service
       dockerfile: ../api-gateway/Dockerfile
@@ -83,7 +91,8 @@ services:
     environment:
       - PORT=8006
     env_file:
-      - ./backend/notification-service/.env
+      - path: ./backend/notification-service/.env
+        required: false
     depends_on:
       redis:
         condition: service_healthy
@@ -91,6 +100,7 @@ services:
 
   # ── Analytics Service ──────────────────────────────────
   analytics-service:
+    profiles: ["services"]
     build:
       context: ./backend/analytics-service
       dockerfile: ../api-gateway/Dockerfile
@@ -99,11 +109,13 @@ services:
     environment:
       - PORT=8004
     env_file:
-      - ./backend/analytics-service/.env
+      - path: ./backend/analytics-service/.env
+        required: false
     restart: unless-stopped
 
   # ── Search Service ─────────────────────────────────────
   search-service:
+    profiles: ["services"]
     build:
       context: ./backend/search-service
       dockerfile: ../api-gateway/Dockerfile
@@ -113,7 +125,8 @@ services:
       - PORT=8005
       - ARTICLE_SERVICE_URL=http://article-service:8002
     env_file:
-      - ./backend/search-service/.env
+      - path: ./backend/search-service/.env
+        required: false
     restart: unless-stopped
 
   # ── Main Backend (monolith — primary pipeline engine) ────
@@ -126,13 +139,18 @@ services:
     environment:
       - HOST=0.0.0.0
       - PORT=8000
+      - ENV=${ENV:-development}
+      - ADMIN_SECRET=${ADMIN_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      - FIREBASE_PROJECT_ID=${FIREBASE_PROJECT_ID:-}
       - REDIS_URL=redis://redis:6379/0
       - ARTICLE_SERVICE_URL=http://article-service:8002
       - SEARCH_SERVICE_URL=http://search-service:8005
       - NOTIFICATION_SERVICE_URL=http://notification-service:8006
       - ANALYTICS_SERVICE_URL=http://analytics-service:8004
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     volumes:
       - ./backend/output:/app/output
     depends_on:
@@ -163,7 +181,8 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     env_file:
-      - ./backend/.env
+      - path: ./backend/.env
+        required: false
     environment:
       - REDIS_URL=redis://redis:6379/0
     volumes:
@@ -183,7 +202,7 @@ services:
       - ./prometheus.yml:/etc/prometheus/prometheus.yml
     restart: unless-stopped
     depends_on:
-      - api-gateway
+      - ann-backend
 
   # ── Grafana ─────────────────────────────────────────────
   grafana:
