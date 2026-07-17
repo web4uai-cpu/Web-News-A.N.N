@@ -1,15 +1,17 @@
 # ============================================
 # A.N.N. — Railway Project Configuration
 # ============================================
-# This file configures the monorepo deployment.
-# Each service is defined separately in its own railway.toml
-# This root file is used when deploying single-service mode.
+# Services with a Root Directory set (api-gateway, article-service, …) use their
+# own railway.toml. This root config is used by the ann-backend monolith service,
+# which builds from the repository root via Dockerfile.ann-backend.
 
 [build]
-builder = "NIXPACKS"
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.ann-backend"
+watchPatterns = ["backend/**", "agents/**", "Dockerfile.ann-backend"]
 
 [deploy]
 healthcheckPath = "/health"
-healthcheckTimeout = 30
+healthcheckTimeout = 60
 restartPolicyType = "ON_FAILURE"
 restartPolicyMaxRetries = 5
