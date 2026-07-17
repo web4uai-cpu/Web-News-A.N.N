@@ -35,7 +35,9 @@ async def create_b2b_client(
     Generate a new API Key for a B2B partner.
     The raw key is returned once and stored only as a SHA-256 hash.
     """
+    import secrets as pysecrets
     new_api_key = f"ann_{client.plan_tier}_{uuid.uuid4().hex[:12]}"
+    webhook_secret = pysecrets.token_hex(32) if client.webhook_url else None
 
     async with AsyncSessionLocal() as session:
         new_client = ClientAPIKey(
@@ -45,6 +47,7 @@ async def create_b2b_client(
             plan_tier=client.plan_tier,
             monthly_quota=client.monthly_quota,
             webhook_url=client.webhook_url,
+            webhook_secret=webhook_secret,
         )
         session.add(new_client)
         await session.commit()
@@ -52,11 +55,12 @@ async def create_b2b_client(
     log.info("admin_created_b2b_client", client_name=client.client_name, key_prefix=key_prefix(new_api_key))
 
     return {
-        "message": "B2B Client Created Successfully. Store this key now — it cannot be retrieved again.",
+        "message": "B2B Client Created Successfully. Store the key and webhook secret now — they cannot be retrieved again.",
         "client_name": client.client_name,
         "api_key": new_api_key,
         "monthly_quota": client.monthly_quota,
         "webhook_url": client.webhook_url,
+        "webhook_secret": webhook_secret,
     }
 
 

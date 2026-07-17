@@ -5,6 +5,9 @@ Keys are stored as SHA-256 hashes; legacy plaintext rows are still matched
 so existing clients keep working until rotated.
 """
 
+import time
+from collections import defaultdict, deque
+
 from fastapi import Security, HTTPException, status
 from fastapi.security.api_key import APIKeyHeader
 from sqlalchemy.future import select
@@ -13,6 +16,26 @@ from core.security import hash_api_key
 from models.b2b_database import AsyncSessionLocal, ClientAPIKey
 
 api_key_header = APIKeyHeader(name="X-ANN-API-Key", auto_error=False)
+
+# ── Per-key rate limiting (sliding 60s window, by plan tier) ──
+TIER_RPM = {"free": 30, "standard": 60, "pro": 300, "enterprise": 1200}
+_request_windows: dict[str, deque[float]] = defaultdict(deque)
+
+
+def check_rate_limit(key_id: str, plan_tier: str) -> None:
+    """Raise 429 when the key exceeds its tier's requests-per-minute budget."""
+    limit = TIER_RPM.get(plan_tier, TIER_RPM["standard"])
+    now = time.monotonic()
+    window = _request_windows[key_id]
+    while window and now - window[0] > 60:
+        window.popleft()
+    if len(window) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail=f"Rate limit exceeded: {limit} requests/minute for tier '{plan_tier}'. Retry shortly.",
+            headers={"Retry-After": "60"},
+        )
+    window.append(now)
 
 
 async def get_client_by_key(raw_key: str, session=None) -> ClientAPIKey | None:
@@ -51,6 +74,8 @@ async def verify_b2b_api_key(api_key_header: str = Security(api_key_header)):
                 status_code=status.HTTP_401_UNAUTHORIZED,
                 detail="Invalid or disabled B2B API Key.",
             )
+
+        check_rate_limit(str(client.id), client.plan_tier)
 
         if client.requests_used >= client.monthly_quota:
             raise HTTPException(

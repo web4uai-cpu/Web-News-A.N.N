@@ -50,6 +50,19 @@ async def store_script(script: BroadcastScript):
         except Exception as e:
             log.error("social_auto_post_failed", script_id=script.id, error=str(e))
 
+    # Notify B2B clients (HMAC-signed, fire-and-forget)
+    try:
+        import asyncio
+        from services.webhooks import broadcast_event
+        asyncio.create_task(broadcast_event("script.created", {
+            "id": script.id,
+            "headline": script.headline,
+            "category": script.category.value if hasattr(script.category, "value") else script.category,
+            "created_at": script.created_at,
+        }))
+    except Exception as e:
+        log.error("webhook_dispatch_failed", script_id=script.id, error=str(e))
+
 
 def sorted_scripts() -> list[BroadcastScript]:
     return sorted(script_store.values(), key=lambda s: s.created_at, reverse=True)

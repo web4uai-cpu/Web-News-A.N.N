@@ -117,6 +117,14 @@ app.add_middleware(
     allow_credentials=True,
 )
 
+# ── API version header ─────────────────────────────────
+@app.middleware("http")
+async def add_api_version_header(request, call_next):
+    response = await call_next(request)
+    response.headers["X-API-Version"] = f"v1 ({settings.app_version})"
+    return response
+
+
 # ── Metrics Instrumentation ────────────────────────────
 try:
     from prometheus_fastapi_instrumentator import Instrumentator

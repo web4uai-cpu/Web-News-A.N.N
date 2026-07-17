@@ -105,31 +105,49 @@ class ClientAPIKey(Base):
     
     # Billing/Webhook Settings
     webhook_url: Mapped[str] = mapped_column(String, nullable=True)
+    webhook_secret: Mapped[str] = mapped_column(String, nullable=True)  # HMAC key for signing outbound webhooks
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
 async def init_db():
-    """Create tables. Falls back to local SQLite if the remote DB is unreachable."""
+    """
+    Create tables. In development, an unreachable remote DB falls back to local
+    SQLite; in production the failure is fatal — never silently serve SQLite.
+    """
     global engine, AsyncSessionLocal, DATABASE_URL
+    is_production = os.getenv("ENV", "development").lower() == "production"
+
+    if is_production and "sqlite" in DATABASE_URL:
+        import logging
+        logging.getLogger(__name__).warning(
+            "ENV=production but DATABASE_URL is not set — running on SQLite is not supported for production."
+        )
+
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
     except Exception:
         if "sqlite" not in DATABASE_URL:
+            if is_production:
+                raise
             import logging
-            logging.getLogger(__name__).warning("Remote DB unreachable, falling back to local SQLite")
+            logging.getLogger(__name__).warning("Remote DB unreachable, falling back to local SQLite (development only)")
             DATABASE_URL = SQLITE_URL
             engine = _build_engine(SQLITE_URL)
             AsyncSessionLocal.configure(bind=engine)
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
-        
-    # Older SQLite files predate the key_prefix column — add it in place.
-    try:
-        from sqlalchemy import text
-        async with engine.begin() as conn:
-            await conn.execute(text("ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''"))
-    except Exception:
-        pass
+
+    # Older SQLite files predate newer columns — add them in place.
+    from sqlalchemy import text
+    for ddl in (
+        "ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''",
+        "ALTER TABLE client_api_keys ADD COLUMN webhook_secret VARCHAR",
+    ):
+        try:
+            async with engine.begin() as conn:
+                await conn.execute(text(ddl))
+        except Exception:
+            pass
 
     # Seed a demo key for local development only — never in production.
     if os.getenv("ENV", "development").lower() == "development":

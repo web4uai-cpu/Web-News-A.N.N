@@ -810,3 +810,30 @@ curl http://localhost:8000/api/v1/b2b/feed/json \
 # 6. WebSocket (requires wscat or similar)
 wscat -c "ws://localhost:8000/ws/breaking-news?api_key=ann_enterprise_a1b2c3d4e5f6"
 ```
+
+---
+
+## Outbound Webhooks (v1)
+
+When a client has a `webhook_url` configured, A.N.N. POSTs signed events (currently `script.created`).
+
+**Headers**
+
+| Header | Value |
+|---|---|
+| `X-ANN-Event` | Event name, e.g. `script.created` |
+| `X-ANN-Timestamp` | Unix seconds when the request was signed |
+| `X-ANN-Signature` | `sha256=` + HMAC-SHA256(`webhook_secret`, `"{timestamp}.{raw_body}"`) |
+
+**Verification** (pseudo-code):
+
+```python
+expected = "sha256=" + hmac_sha256(secret, f"{timestamp}.{raw_body}").hexdigest()
+valid = constant_time_compare(expected, signature) and abs(now - timestamp) < 300
+```
+
+The `webhook_secret` is returned exactly once when the client is created via `POST /api/v1/admin/clients`. Delivery retries up to 3 times with exponential backoff; any 2xx acknowledges receipt.
+
+## Rate Limits (v1)
+
+Per-key sliding-window limits by tier: free 30 rpm, standard 60 rpm, pro 300 rpm, enterprise 1200 rpm. Exceeding the limit returns `429` with a `Retry-After` header. Monthly quotas apply separately (`402` when exhausted). Every response carries `X-API-Version`.
