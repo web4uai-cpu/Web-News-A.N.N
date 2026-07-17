@@ -2,150 +2,76 @@
 
 Fully automated AI-powered news platform: ingests news from multiple sources, processes through a multi-agent AI pipeline, produces articles/audio/video, distributes to web + social media.
 
+## Architecture Reality (read this first)
+
+- **The running backend is a modular monolith**: `backend/main.py` (FastAPI app factory) with domain routers in `backend/routers/`. It imports agents/ingestion/media/services directly.
+- The per-service folders under `backend/` (`api-gateway/`, `auth-service/`, `article-service/`, `video-service/`, `analytics-service/`, `search-service/`, `notification-service/`) are **future extraction targets** — implemented but NOT called by the monolith. See `backend/SERVICES.md`.
+- The **real 9-node agent pipeline** is the LangGraph orchestrator in `agents/orchestrator/` (`graph.py`, `nodes.py`, `runner.py`), invoked via `POST /api/v1/pipeline/orchestrator`. The `agents/*-agent/` folders for discovery/legal/rewrite/seo/avatar/publishing are README-only stubs.
+- The simple pipeline (`/api/v1/pipeline/run`) uses `backend/services/pipeline.py` + the small agents in `backend/agents/`.
+
 ## Tech Stack
 
-- **Backend**: Python 3.13, FastAPI, Uvicorn (microservice architecture)
-- **Frontend**: Next.js 16 + TypeScript + TailwindCSS in `frontend/web/`
-  - State: Zustand | Data: React Query | Animation: Framer Motion
-  - Charts: Recharts | Forms: React Hook Form | Auth: Supabase Auth
-- **Frontend (legacy)**: Vanilla HTML/CSS/JS in `frontend/` root files
-- **Queue**: Celery + Redis
-- **Database**: Supabase (Postgres) + SQLAlchemy + Alembic, SQLite fallback
+- **Backend**: Python 3.13, FastAPI, Uvicorn — modular monolith
+- **Frontend**: Next.js 16 + TypeScript + Tailwind v4 in `frontend/web/`
+  - State: Zustand | Data: React Query | Animation: Framer Motion | Charts: Recharts | Forms: React Hook Form
+- **Auth**: Firebase Auth on the frontend (`frontend/web/src/lib/auth-store.ts`); backend verifies Firebase ID tokens + B2B API keys + admin token via `backend/core/security.py`
+- **Queue**: Celery + Redis (optional — BackgroundTasks fallback without REDIS_URL)
+- **Database**: SQLAlchemy async; SQLite by default, Postgres via `DATABASE_URL` (Railway); Alembic present
 - **LLM**: OpenAI-compatible API (GPT-4o default, Gemini supported)
 - **Media**: ElevenLabs TTS, HeyGen video avatars
-- **Monitoring**: Prometheus + Grafana
-- **Deploy**: Docker Compose, Kubernetes, Terraform (planned)
-
-## Repo Structure (Microservice Architecture)
-
-```
-ANN/
-├── frontend/
-│   ├── web/                        # Next.js 16 app (main frontend)
-│   │   ├── src/app/                # Pages: / (dashboard), /news, /portal
-│   │   ├── src/components/         # dashboard/, news/, portal/, shared/, ui/
-│   │   ├── src/lib/                # api.ts, store.ts, auth-store.ts, supabase.ts, utils.ts
-│   │   └── next.config.ts
-│   ├── mobile/                     # React Native app (planned)
-│   ├── admin/                      # Internal admin panel (planned)
-│   ├── index.html                  # Legacy vanilla dashboard
-│   ├── css/ js/ public/            # Legacy vanilla assets
-│
-├── backend/
-│   ├── main.py                     # Current monolith (FastAPI) — migration source
-│   ├── config.py                   # pydantic-settings config
-│   ├── api-gateway/                # Request routing, rate limiting, auth validation
-│   ├── auth-service/               # Supabase Auth, JWT, RBAC, API key management
-│   ├── article-service/            # Article CRUD, scripts, categories, feeds
-│   ├── video-service/              # ElevenLabs TTS + HeyGen video generation
-│   ├── analytics-service/          # User behavior, CTR, engagement, agent scoring
-│   ├── search-service/             # Full-text + semantic search
-│   ├── notification-service/       # Social posting, push, email, webhooks
-│   ├── agents/ ingestion/ media/   # Current monolith modules (migration source)
-│   ├── services/ social/ feeds/    # Current monolith modules (migration source)
-│   └── models/ utils/ alembic/     # Current monolith modules (migration source)
-│
-├── agents/
-│   ├── orchestrator/               # Master pipeline coordinator (DAG)
-│   ├── discovery-agent/            # Source ingestion + deduplication
-│   ├── fact-agent/                 # Fact verification + cross-referencing
-│   ├── legal-agent/                # Legal compliance + content moderation
-│   ├── rewrite-agent/              # Broadcast script generation
-│   ├── seo-agent/                  # SEO optimization + metadata
-│   ├── translation-agent/          # Multi-language translation (EN→HI+)
-│   ├── avatar-agent/               # AI video production coordination
-│   └── publishing-agent/           # Multi-channel content distribution
-│
-├── infrastructure/
-│   ├── kubernetes/                 # K8s manifests for all services
-│   ├── terraform/                  # Cloud IaC (VPC, clusters, DB, CDN)
-│   ├── docker/                     # Multi-service compose files
-│   └── monitoring/                 # Prometheus, Grafana, alerting
-│
-├── docs/
-│   ├── architecture/               # System design, data flow diagrams
-│   ├── api/                        # OpenAPI specs, SDK examples
-│   ├── deployment/                 # Deploy guides, CI/CD, env vars
-│   └── business/                   # PRD, pricing, monetization
-│
-├── ai/
-│   ├── prompts/                    # System prompts per agent
-│   ├── workflows/                  # Pipeline DAG definitions
-│   ├── memory/                     # Agent long-term memory
-│   └── rag/                        # Vector search, knowledge base
-│
-├── docker-compose.yml              # Current monolith stack
-├── vercel.json                     # Frontend deployment
-├── prometheus.yml                  # Metrics config
-└── k8s/enterprise-stack.yaml       # Legacy K8s manifest
-```
+- **Deploy**: Backend on Railway, frontend on Vercel (root dir `frontend/web`); Docker Compose / K8s / Terraform in `infrastructure/`
 
 ## Development Commands
 
 ```bash
-# Backend (current monolith)
+# Backend
 cd backend
 pip install -r requirements.txt
 cp .env.example .env
 uvicorn main:app --reload --port 8000
 
-# Celery worker
+# Celery worker (only if REDIS_URL set)
 celery -A celery_app worker --loglevel=info
 
-# Docker (full stack)
-docker-compose up --build
-
-# DB migrations
-cd backend && alembic upgrade head
-
-# Next.js Frontend
+# Next.js frontend
 cd frontend/web
 npm install
-npm run dev                         # Dev server on port 3000
-npm run build                       # Production build
+npm run dev          # port 3000
+npm run build
 
-# Tests
+# Tests / migrations
 pytest backend/
+cd backend && alembic upgrade head
 ```
 
-## Architecture Pipeline
+## Security model (do not regress)
 
-```
-Data Sources (NewsAPI, GDELT, AlphaVantage, RSS, Gov feeds, Social signals)
-    → Discovery Agent (ingestion + dedup)
-    → Fact Agent (verification)
-    → Legal Agent (compliance)
-    → Rewrite Agent (script generation)
-    → SEO Agent (optimization)
-    → Translation Agent (EN → HI)
-    → Avatar Agent (TTS + video)
-    → Publishing Agent (web, social, mobile, Telegram, WhatsApp)
-    → Analytics → Feedback Loop → Agent Learning
-```
+- `ADMIN_SECRET` has **no default** — admin routes return 503 until it is set. Never reintroduce a fallback token.
+- Cost-sensitive endpoints (`/api/v1/ingest/*`, `/api/v1/pipeline/*`, `/api/v1/media/*`, `/api/v1/process_news`) require auth via `require_pipeline_access` (admin token, B2B key, or Firebase token). Open only in `ENV=development`.
+- CORS comes from `CORS_ORIGINS` env (+ built-in `*.vercel.app` regex). Never `allow_origins=["*"]`.
+- B2B API keys stored as SHA-256 hashes (`core/security.py:hash_api_key`); raw keys shown once at creation, listings masked.
+- Demo key `ann_demo_key_777` exists only when `ENV=development`.
+- Real secrets live only in `backend/.env` / `frontend/web/.env.local` (both gitignored). A `.claude` hook blocks secret-looking strings in tracked files.
 
 ## Environment Variables
 
-Copy `backend/.env.example` to `backend/.env`. Required keys:
-
-| Variable | Service |
-|---|---|
-| `LLM_API_KEY` | OpenAI or Gemini |
-| `NEWS_API_KEY` | NewsAPI.org |
-| `ELEVENLABS_API_KEY` | Voice generation |
-| `HEYGEN_API_KEY` | Video avatars |
-| `ALPHA_VANTAGE_KEY` | Financial data |
-| `TWITTER_BEARER_TOKEN` | Social posting |
-| `FACEBOOK_PAGE_TOKEN` | Social posting |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon key |
+Copy `backend/.env.example` to `backend/.env`. Key vars: `LLM_API_KEY`, `NEWS_API_KEY`, `ELEVENLABS_API_KEY`, `HEYGEN_API_KEY`, `ALPHA_VANTAGE_KEY`, social tokens, plus security vars `ENV`, `ADMIN_SECRET`, `CORS_ORIGINS`, `FIREBASE_PROJECT_ID`. Frontend uses `NEXT_PUBLIC_API_URL` and `NEXT_PUBLIC_FIREBASE_*`.
 
 ## Conventions
 
-- All config via `pydantic-settings` in `backend/config.py` — access with `get_settings()`
-- Logging via `structlog` — use `get_logger()` from `backend/utils/logger.py`
+- Config via `pydantic-settings` in `backend/config.py` — access with `get_settings()`
+- Auth dependencies from `backend/core/security.py` (`require_admin`, `require_pipeline_access`)
+- Logging via `structlog` — `get_logger()` from `backend/utils/logger.py`
 - Rate limiting per external service via `backend/utils/rate_limiter.py`
 - New ingestion sources extend `BaseSource` in `backend/ingestion/base_source.py`
-- Async tasks go through Celery in `backend/services/tasks.py`
-- Each new microservice gets its own `Dockerfile`, `requirements.txt`, and `README.md`
-- API Gateway on port 8000, individual services on 8001-8006
-- Frontend auth via Supabase Auth (Zustand store in `frontend/web/src/lib/auth-store.ts`)
+- Agent prompts are YAML in `ai/prompts/`, loaded via `ai/prompts/registry.py`
+- Async tasks through Celery in `backend/services/tasks.py`
+- Frontend API calls only through `frontend/web/src/lib/api.ts`; UI follows the dark glassmorphism tokens in `globals.css`
+
+## Pipeline
+
+```
+Sources (NewsAPI, GDELT, AlphaVantage) → Discovery → Fact → Legal → Scriptwriter
+  → Critic → Headline → SEO → Translation (EN→HI+) → Media (TTS/video) → Publishing
+  (web /news, RSS/Atom/JSON feeds, social, B2B feed, WebSocket /ws/breaking-news)
+```

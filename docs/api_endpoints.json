@@ -72,7 +72,7 @@
                         "header": [
                             {
                                 "key": "X-Admin-Token",
-                                "value": "superadmin123"
+                                "value": "<your ADMIN_SECRET>"
                             }
                         ],
                         "body": {

@@ -417,7 +417,7 @@ frontend/web/.env.local         # Frontend config (gitignored)
 | Payment | `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET` | Critical — financial |
 | Social media | `TWITTER_BEARER_TOKEN`, `FACEBOOK_PAGE_TOKEN`, `INSTAGRAM_ACCESS_TOKEN` | Medium |
 | Database | `DATABASE_URL`, `SUPABASE_KEY` | Critical — data access |
-| Admin | `ADMIN_SECRET` (default: `superadmin123`) | Critical — full system access |
+| Admin | `ADMIN_SECRET` (no default — admin routes disabled until set) | Critical — full system access |
 | Redis | `REDIS_URL` | Medium — cache/queue access |
 
 ### 7.2 Runtime Secret Update
@@ -442,15 +442,18 @@ accepted_keys = [
 ]
 ```
 
-### 7.3 Known Vulnerabilities
+### 7.3 Vulnerability Status (updated 2026-07)
 
-| Issue | Severity | Current State | Remediation |
-|---|---|---|---|
-| Admin token is hardcoded default | **Critical** | `superadmin123` | Move to env var, enforce strong value |
-| Settings endpoint has no auth | **High** | Anyone can read/write API keys | Add admin token requirement |
-| API keys stored in plaintext | **High** | `.env` file on disk | Migrate to secrets manager |
-| Supabase anon key in frontend | Low | Expected — anon key is public-safe | RLS policies protect data |
-| B2B API keys stored in plaintext DB | **Medium** | `ClientAPIKey.api_key` column | Hash with bcrypt, compare on auth |
+| Issue | Severity | Status |
+|---|---|---|
+| Admin token hardcoded default (`superadmin123`) | **Critical** | **Fixed** — no default; admin routes return 503 until `ADMIN_SECRET` set; `secrets.compare_digest` |
+| Settings endpoint unauthenticated | **High** | **Fixed** — GET/POST `/api/v1/admin/settings` require `require_admin` |
+| CORS `allow_origins=["*"]` | **High** | **Fixed** — env-driven `CORS_ORIGINS` allowlist + `*.vercel.app` regex across all services |
+| B2B API keys plaintext in DB / returned by admin list | **High** | **Fixed** — SHA-256 hashed at rest, shown once at creation, listings masked (`key_prefix`) |
+| Demo enterprise key seeded in production | **Medium** | **Fixed** — seeded only when `ENV=development` |
+| Cost endpoints (ingest/pipeline/media) unauthenticated | **High** | **Fixed** — `require_pipeline_access` (admin / B2B key / Firebase token); open only in development |
+| Provider keys in plaintext `.env` on disk | Medium | Open — migrate to a secrets manager |
+| WebSocket auth via query param | Low | Open — move to first-message auth or subprotocol header |
 
 ### 7.4 Target: Cloud Secrets Manager
 

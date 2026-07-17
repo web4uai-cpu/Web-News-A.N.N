@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run dev:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm install:*)",
+      "Bash(pytest:*)",
+      "Bash(python -m py_compile:*)",
+      "Bash(pip install:*)",
+      "Bash(uvicorn:*)",
+      "Bash(alembic:*)"
+    ],
+    "deny": [
+      "Read(./backend/.env)",
+      "Read(./frontend/web/.env.local)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python .claude/hooks/block-secrets.py"
+          }
+        ]
+      }
+    ]
+  }
+}
