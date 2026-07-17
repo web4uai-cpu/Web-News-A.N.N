@@ -20,6 +20,23 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
+    env: str = Field(default="development", description="development | production")
+
+    # ── Security ────────────────────────────────────────
+    admin_secret: str = Field(default="", description="Admin token; admin routes are disabled when empty")
+    cors_origins: str = Field(
+        default="http://localhost:3000,http://127.0.0.1:3000,http://localhost:8000",
+        description="Comma-separated list of allowed CORS origins",
+    )
+    cors_origin_regex: str = Field(
+        default=r"https://.*\.vercel\.app",
+        description="Regex for additional allowed origins (Vercel previews)",
+    )
+    firebase_project_id: str = Field(default="", description="Firebase project ID for ID-token verification")
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        return [o.strip() for o in self.cors_origins.split(",") if o.strip()]
 
     # ── LLM Brain ───────────────────────────────────────
     llm_api_key: str = Field(default="", description="OpenAI / Gemini API Key")

@@ -45,16 +45,21 @@ export function SettingsModal({ open, onClose }: Props) {
   const toast = useToastStore((s) => s.add);
 
   const onSubmit = handleSubmit(async (data) => {
+    const adminToken = typeof data.ADMIN_TOKEN === "string" ? data.ADMIN_TOKEN.trim() : "";
+    if (!adminToken) {
+      toast("Admin token is required to change system keys", "error");
+      return;
+    }
     const payload: Record<string, string> = {};
     for (const [k, v] of Object.entries(data)) {
-      if (typeof v === "string" && v.trim()) payload[k] = v.trim();
+      if (k !== "ADMIN_TOKEN" && typeof v === "string" && v.trim()) payload[k] = v.trim();
     }
     if (Object.keys(payload).length === 0) {
       toast("No changes to save", "info");
       return;
     }
     try {
-      const result = await api.saveSettings(payload);
+      const result = await api.saveSettings(payload, adminToken);
       toast(result.message || "Settings saved!", "success");
       reset();
       onClose();
@@ -90,6 +95,19 @@ export function SettingsModal({ open, onClose }: Props) {
             <h2 className="mb-6 text-lg font-bold">⚙️ System API Keys</h2>
 
             <form onSubmit={onSubmit} className="space-y-6">
+              <div>
+                <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-rose-400">
+                  🔐 Authorization
+                </h3>
+                <label className="mb-1 block text-xs text-muted">Admin Token (required)</label>
+                <input
+                  {...register("ADMIN_TOKEN")}
+                  type="password"
+                  placeholder="X-Admin-Token value"
+                  className={inputClass}
+                />
+              </div>
+
               {SETTING_GROUPS.map((group) => (
                 <div key={group.title}>
                   <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-indigo-400">

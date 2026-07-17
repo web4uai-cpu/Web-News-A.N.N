@@ -1,12 +1,27 @@
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
 
+async function firebaseAuthHeader(): Promise<Record<string, string>> {
+  if (typeof window === "undefined") return {};
+  try {
+    const { auth } = await import("./firebase");
+    const token = await auth.currentUser?.getIdToken();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  } catch {
+    return {};
+  }
+}
+
 export async function apiFetch<T>(
   endpoint: string,
   options?: RequestInit
 ): Promise<T> {
   const res = await fetch(`${API_BASE}${endpoint}`, {
-    headers: { "Content-Type": "application/json", ...options?.headers },
     ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(await firebaseAuthHeader()),
+      ...options?.headers,
+    },
   });
 
   if (!res.ok) {
@@ -97,11 +112,15 @@ export const api = {
       body: JSON.stringify({ script_id: scriptId, language }),
     }),
 
-  getSettings: () => apiFetch<Record<string, string>>("/api/v1/admin/settings"),
-  saveSettings: (payload: Record<string, string>) =>
+  getSettings: (adminToken: string) =>
+    apiFetch<Record<string, string>>("/api/v1/admin/settings", {
+      headers: { "X-Admin-Token": adminToken },
+    }),
+  saveSettings: (payload: Record<string, string>, adminToken: string) =>
     apiFetch<{ message: string }>("/api/v1/admin/settings", {
       method: "POST",
       body: JSON.stringify(payload),
+      headers: { "X-Admin-Token": adminToken },
     }),
 
   b2bCheckout: (tier = "pro", clientName = "ExternalFirm") =>

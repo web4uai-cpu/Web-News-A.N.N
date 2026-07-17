@@ -30,7 +30,13 @@ async def apply_auth(request: Request, route: Route) -> Response | None:
 
     if route.auth == AuthLevel.ADMIN:
         admin_token = request.headers.get("x-admin-token")
-        expected = os.getenv("ADMIN_SECRET", "superadmin123")
+        expected = os.getenv("ADMIN_SECRET", "")
+        if not expected:
+            return Response(
+                content='{"detail": "Admin access disabled: ADMIN_SECRET is not configured."}',
+                status_code=503,
+                media_type="application/json",
+            )
         if admin_token != expected:
             return Response(
                 content='{"detail": "Invalid Admin Token"}',

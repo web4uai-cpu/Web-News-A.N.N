@@ -11,7 +11,7 @@ import time
 import asyncio
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, BackgroundTasks, Query
+from fastapi import FastAPI, HTTPException, BackgroundTasks, Query, Depends
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse, JSONResponse, HTMLResponse
 from fastapi.middleware.cors import CORSMiddleware
@@ -24,6 +24,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 load_dotenv()
 
 from config import get_settings
+from core.security import require_admin, require_pipeline_access, hash_api_key, key_prefix
 from utils.logger import setup_logging, get_logger
 from utils.rate_limiter import rate_limiter
 from models.schemas import (
@@ -136,12 +137,14 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
-# CORS for development
+# CORS — explicit allowlist + Vercel preview regex (configure CORS_ORIGINS / CORS_ORIGIN_REGEX)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origin_list,
+    allow_origin_regex=settings.cors_origin_regex or None,
     allow_methods=["*"],
     allow_headers=["*"],
+    allow_credentials=True,
 )
 
 # ── Metrics Instrumentation ────────────────────────────
@@ -240,7 +243,7 @@ async def read_b2b_portal():
 # ── Single Article Processing ──────────────────────────
 
 @app.post("/api/v1/process_news", response_model=BroadcastScript, tags=["Editorial"])
-async def process_raw_news(article: ArticleInput):
+async def process_raw_news(article: ArticleInput, _auth: dict = Depends(require_pipeline_access)):
     """
     Process a single raw article through the editorial pipeline.
     
@@ -269,7 +272,7 @@ async def process_raw_news(article: ArticleInput):
 # ── Ingestion Endpoints ───────────────────────────────
 
 @app.post("/api/v1/ingest/newsapi", response_model=list[BroadcastScript], tags=["Ingestion"])
-async def ingest_from_newsapi(request: IngestRequest):
+async def ingest_from_newsapi(request: IngestRequest, _auth: dict = Depends(require_pipeline_access)):
     """Fetch articles from NewsAPI, process through editorial pipeline."""
     try:
         articles = await newsapi.fetch_articles(
@@ -298,7 +301,7 @@ async def ingest_from_newsapi(request: IngestRequest):
 
 
 @app.post("/api/v1/ingest/financial", response_model=list[BroadcastScript], tags=["Ingestion"])
-async def ingest_financial_news(request: FinancialIngestRequest):
+async def ingest_financial_news(request: FinancialIngestRequest, _auth: dict = Depends(require_pipeline_access)):
     """Fetch financial news from Alpha Vantage, process through pipeline."""
     try:
         tickers = ",".join(request.symbols)
@@ -328,7 +331,7 @@ async def ingest_financial_news(request: FinancialIngestRequest):
 
 
 @app.post("/api/v1/ingest/gdelt", response_model=list[BroadcastScript], tags=["Ingestion"])
-async def ingest_from_gdelt(request: IngestRequest):
+async def ingest_from_gdelt(request: IngestRequest, _auth: dict = Depends(require_pipeline_access)):
     """Fetch geopolitical events from GDELT, process through pipeline."""
     try:
         articles = await gdelt.fetch_articles(
@@ -364,6 +367,7 @@ async def run_pipeline(
     request: IngestRequest = IngestRequest(),
     generate_media: bool = Query(False, description="Generate audio/video (costs apply)"),
     source: str = Query("newsapi", description="Source: newsapi, financial, gdelt"),
+    _auth: dict = Depends(require_pipeline_access),
 ):
     """
     Run the full pipeline in the background.
@@ -557,7 +561,7 @@ async def get_system_metrics():
 # ── Media Generation ──────────────────────────────────
 
 @app.post("/api/v1/media/generate_audio", tags=["Media"])
-async def generate_audio(request: AudioGenerationRequest):
+async def generate_audio(request: AudioGenerationRequest, _auth: dict = Depends(require_pipeline_access)):
     """Generate TTS audio for a script."""
     script = script_store.get(request.script_id)
     if not script:
@@ -578,7 +582,7 @@ async def generate_audio(request: AudioGenerationRequest):
 
 
 @app.post("/api/v1/media/generate_video", tags=["Media"])
-async def generate_video(request: VideoGenerationRequest):
+async def generate_video(request: VideoGenerationRequest, _auth: dict = Depends(require_pipeline_access)):
     """Generate AI avatar video for a script."""
     script = script_store.get(request.script_id)
     if not script:
@@ -702,32 +706,30 @@ class B2BClientCreate(BaseModel):
 @app.post("/api/v1/admin/clients", tags=["Admin Control Panel (B2B SaaS)"])
 async def create_b2b_client(
     client: B2BClientCreate,
-    admin_token: str = Security(APIKeyHeader(name="X-Admin-Token")),
+    _admin: bool = Depends(require_admin),
 ):
     """
     Generate a new API Key for a B2B partner.
-    Protects route with X-Admin-Token (Default: superadmin123)
+    The raw key is returned once and stored only as a SHA-256 hash.
     """
-    if admin_token != os.getenv("ADMIN_SECRET", "superadmin123"):
-        raise HTTPException(status_code=403, detail="Invalid Admin Token")
-
     new_api_key = f"ann_{client.plan_tier}_{uuid.uuid4().hex[:12]}"
 
     async with AsyncSessionLocal() as session:
         new_client = ClientAPIKey(
             client_name=client.client_name,
-            api_key=new_api_key,
+            api_key=hash_api_key(new_api_key),
+            key_prefix=key_prefix(new_api_key),
             plan_tier=client.plan_tier,
             monthly_quota=client.monthly_quota,
             webhook_url=client.webhook_url,
         )
         session.add(new_client)
         await session.commit()
-    
-    log.info("admin_created_b2b_client", client_name=client.client_name, api_key=new_api_key)
-    
+
+    log.info("admin_created_b2b_client", client_name=client.client_name, key_prefix=key_prefix(new_api_key))
+
     return {
-        "message": "B2B Client Created Successfully",
+        "message": "B2B Client Created Successfully. Store this key now — it cannot be retrieved again.",
         "client_name": client.client_name,
         "api_key": new_api_key,
         "monthly_quota": client.monthly_quota,
@@ -736,21 +738,18 @@ async def create_b2b_client(
 
 @app.get("/api/v1/admin/clients", tags=["Admin Control Panel (B2B SaaS)"])
 async def list_b2b_clients(
-    admin_token: str = Security(APIKeyHeader(name="X-Admin-Token")),
+    _admin: bool = Depends(require_admin),
 ):
-    """List all deployed API keys and quota usage."""
-    if admin_token != os.getenv("ADMIN_SECRET", "superadmin123"):
-        raise HTTPException(status_code=403, detail="Invalid Admin Token")
-
+    """List all deployed API keys (masked) and quota usage."""
     async with AsyncSessionLocal() as session:
         result = await session.execute(select(ClientAPIKey))
         clients = result.scalars().all()
-        
+
     return [
         {
             "id": c.id,
             "client_name": c.client_name,
-            "api_key": c.api_key,
+            "api_key": c.key_prefix or "(hashed)",
             "plan_tier": c.plan_tier,
             "quota": f"{c.requests_used}/{c.monthly_quota}",
             "webhook_url": c.webhook_url,
@@ -762,10 +761,9 @@ from dotenv import set_key
 from typing import Dict, Any
 
 @app.get("/api/v1/admin/settings", tags=["Admin Control Panel (Settings)"])
-async def get_system_settings():
-    """Retrieve current system API keys safely masked."""
-    env_path = os.path.join(os.path.dirname(__file__), ".env")
-    
+async def get_system_settings(_admin: bool = Depends(require_admin)):
+    """Retrieve current system API keys safely masked. Admin only."""
+
     def _mask(val: str | None) -> str:
         if not val or len(val) < 8: return ""
         return f"{val[:4]}...{val[-4:]}"
@@ -783,8 +781,8 @@ async def get_system_settings():
     }
 
 @app.post("/api/v1/admin/settings", tags=["Admin Control Panel (Settings)"])
-async def update_system_settings(settings_payload: Dict[str, str]):
-    """Update API keys dynamically by rewriting the .env file."""
+async def update_system_settings(settings_payload: Dict[str, str], _admin: bool = Depends(require_admin)):
+    """Update API keys dynamically by rewriting the .env file. Admin only."""
     env_path = os.path.join(os.path.dirname(__file__), ".env")
     
     # Ensure .env exists
@@ -843,14 +841,11 @@ from sqlalchemy import select
 
 
 async def _get_active_client(api_key: str) -> ClientAPIKey:
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
-        )
-        client = result.scalars().first()
-        if not client:
-            raise HTTPException(status_code=401, detail="Invalid or suspended API Key.")
-        return client
+    from services.auth import get_client_by_key
+    client = await get_client_by_key(api_key)
+    if not client or not client.is_active:
+        raise HTTPException(status_code=401, detail="Invalid or suspended API Key.")
+    return client
 
 
 @app.get("/api/v1/b2b/portal/metrics", tags=["B2B Client Portal"])
@@ -876,12 +871,10 @@ async def link_client_social_keys(ig_token: str = "", fb_page_id: str = "", link
 @app.post("/api/v1/b2b/portal/generate", tags=["B2B Client Portal"])
 async def trigger_client_studio_generation(topic: str, background_tasks: BackgroundTasks, api_key: str = Header(..., alias="X-ANN-API-Key")):
     """The 'On-Demand AI Studio' Route. Burns 50 quota requests to spin the autonomous pipeline for a custom keyword."""
+    from services.auth import get_client_by_key
     async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
-        )
-        client = result.scalars().first()
-        if not client:
+        client = await get_client_by_key(api_key, session)
+        if not client or not client.is_active:
             raise HTTPException(status_code=401, detail="Invalid API Key.")
 
         if client.plan_tier != "enterprise":
@@ -987,12 +980,9 @@ async def breaking_news_stream(websocket: WebSocket, api_key: str = Query(None))
         await websocket.close(code=1008, reason="Missing API Authentication.")
         return
 
-    async with AsyncSessionLocal() as session:
-        result = await session.execute(
-            select(ClientAPIKey).where(ClientAPIKey.api_key == api_key, ClientAPIKey.is_active == True)
-        )
-        client = result.scalars().first()
-    if not client:
+    from services.auth import get_client_by_key
+    client = await get_client_by_key(api_key)
+    if not client or not client.is_active:
         await websocket.close(code=1008, reason="Invalid or Suspended API Key.")
         return
         
@@ -1030,6 +1020,7 @@ async def run_orchestrator_pipeline(
     background_tasks: BackgroundTasks,
     request: IngestRequest = IngestRequest(),
     source: str = Query("newsapi", description="Source: newsapi, financial, gdelt"),
+    _auth: dict = Depends(require_pipeline_access),
 ):
     """
     Run the advanced LangGraph multi-agent orchestrator pipeline.

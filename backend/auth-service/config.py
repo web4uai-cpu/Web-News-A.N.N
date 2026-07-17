@@ -23,7 +23,7 @@ class AuthSettings(BaseSettings):
     stripe_webhook_secret: str = Field(default="", description="Stripe webhook signing secret")
 
     # Admin
-    admin_secret: str = Field(default="superadmin123", description="Admin token for protected routes")
+    admin_secret: str = Field(default="", description="Admin token for protected routes; empty disables admin access")
 
     class Config:
         env_file = ".env"

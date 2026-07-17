@@ -94,7 +94,8 @@ class ClientAPIKey(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True, index=True)
     client_name: Mapped[str] = mapped_column(String, index=True)
-    api_key: Mapped[str] = mapped_column(String, unique=True, index=True)
+    api_key: Mapped[str] = mapped_column(String, unique=True, index=True)  # SHA-256 hash of the raw key
+    key_prefix: Mapped[str] = mapped_column(String, default="", nullable=True)  # displayable prefix, e.g. "ann_pro_ab12…"
     plan_tier: Mapped[str] = mapped_column(String, default="standard")  # e.g. "free", "standard", "enterprise"
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
     
@@ -122,19 +123,33 @@ async def init_db():
             async with engine.begin() as conn:
                 await conn.run_sync(Base.metadata.create_all)
         
-    # Seed a demo key for the developer to test with immediately
-    async with AsyncSessionLocal() as session:
-        from sqlalchemy import select
-        result = await session.execute(select(ClientAPIKey).where(ClientAPIKey.api_key == "ann_demo_key_777"))
-        if not result.scalars().first():
-            demo_client = ClientAPIKey(
-                client_name="Demo Developer Client",
-                api_key="ann_demo_key_777",
-                plan_tier="enterprise",
-                monthly_quota=50000,
+    # Older SQLite files predate the key_prefix column — add it in place.
+    try:
+        from sqlalchemy import text
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''"))
+    except Exception:
+        pass
+
+    # Seed a demo key for local development only — never in production.
+    if os.getenv("ENV", "development").lower() == "development":
+        from core.security import hash_api_key, key_prefix
+        demo_raw = "ann_demo_key_777"
+        async with AsyncSessionLocal() as session:
+            from sqlalchemy import select
+            result = await session.execute(
+                select(ClientAPIKey).where(ClientAPIKey.api_key.in_([demo_raw, hash_api_key(demo_raw)]))
             )
-            session.add(demo_client)
-            await session.commit()
+            if not result.scalars().first():
+                demo_client = ClientAPIKey(
+                    client_name="Demo Developer Client",
+                    api_key=hash_api_key(demo_raw),
+                    key_prefix=key_prefix(demo_raw),
+                    plan_tier="enterprise",
+                    monthly_quota=50000,
+                )
+                session.add(demo_client)
+                await session.commit()
 
     # Seed demo broadcast scripts if none exist
     async with AsyncSessionLocal() as session:
