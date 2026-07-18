@@ -4,8 +4,9 @@ Fully automated AI-powered news platform: ingests news from multiple sources, pr
 
 ## Architecture Reality (read this first)
 
-- **The running backend is a modular monolith**: `backend/main.py` (FastAPI app factory) with domain routers in `backend/routers/`. It imports agents/ingestion/media/services directly.
-- The per-service folders under `backend/` (`api-gateway/`, `auth-service/`, `article-service/`, `video-service/`, `analytics-service/`, `search-service/`, `notification-service/`) are **future extraction targets** — implemented but NOT called by the monolith. See `backend/SERVICES.md`.
+- **The running backend is a modular monolith**: `backend/main.py` (FastAPI app factory) with domain routers in `backend/routers/`. It imports agents/ingestion/media/services directly. Its only live connections are Postgres, Redis, and external vendor APIs — verified at `/health` (liveness) and `/health/ready` (readiness).
+- The per-service folders under `backend/` (`api-gateway/`, `auth-service/`, `article-service/`, `video-service/`, `analytics-service/`, `search-service/`, `notification-service/`) are **dormant future extraction targets** — implemented but NOT called by the monolith and NOT deployed (Railway runs only `ann-backend` + Postgres + Redis). See `backend/SERVICES.md`.
+- **Postgres schema is Alembic-managed** — `init_db()` stamps/upgrades on startup. Change a model, then `alembic revision --autogenerate` + commit; never hand-write `ALTER TABLE`.
 - The **real 9-node agent pipeline** is the LangGraph orchestrator in `agents/orchestrator/` (`graph.py`, `nodes.py`, `runner.py`), invoked via `POST /api/v1/pipeline/orchestrator`. The `agents/*-agent/` folders for discovery/legal/rewrite/seo/avatar/publishing are README-only stubs.
 - The simple pipeline (`/api/v1/pipeline/run`) uses `backend/services/pipeline.py` + the small agents in `backend/agents/`.
 

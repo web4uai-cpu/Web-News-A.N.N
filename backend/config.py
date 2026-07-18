@@ -87,12 +87,6 @@ class Settings(BaseSettings):
     supabase_key: str = Field(default="", description="Supabase API Key")
     database_url: str = Field(default="", description="Direct Postgres Connection URL")
 
-    # ── Microservice URLs (Docker Compose internal) ──────
-    article_service_url: str = Field(default="http://localhost:8002", description="Article service URL")
-    search_service_url: str = Field(default="http://localhost:8005", description="Search service URL")
-    notification_service_url: str = Field(default="http://localhost:8006", description="Notification service URL")
-    analytics_service_url: str = Field(default="http://localhost:8004", description="Analytics service URL")
-
     # ── Background Worker & Cache ───────────────────────
     redis_url: str | None = Field(default=None, description="Redis connection URL")
 

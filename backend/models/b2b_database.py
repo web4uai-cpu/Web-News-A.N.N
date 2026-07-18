@@ -35,6 +35,7 @@ def _build_engine(url: str):
             "max_overflow": int(os.getenv("DB_MAX_OVERFLOW", "10")),
             "pool_timeout": 30,
             "pool_recycle": 1800,
+            "pool_pre_ping": True,  # transparently recycle stale Railway connections
         })
     return create_async_engine(url, **kwargs)
 
@@ -108,47 +109,88 @@ class ClientAPIKey(Base):
     webhook_secret: Mapped[str] = mapped_column(String, nullable=True)  # HMAC key for signing outbound webhooks
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
 
+def _alembic_config():
+    """Build an Alembic Config pointed at backend/alembic.ini."""
+    from alembic.config import Config
+    backend_dir = os.path.dirname(os.path.dirname(__file__))
+    cfg = Config(os.path.join(backend_dir, "alembic.ini"))
+    cfg.set_main_option("script_location", os.path.join(backend_dir, "alembic"))
+    return cfg
+
+
+def _run_alembic_sync(needs_stamp: bool):
+    """
+    Synchronous Alembic runner (executed in a worker thread — Alembic's env.py
+    calls asyncio.run() internally, which cannot run inside our event loop).
+
+    ``needs_stamp`` adopts a pre-existing, un-stamped schema by stamping it to
+    head first; then any newer migrations are applied. This makes Alembic the
+    single source of truth for the Postgres schema going forward — no more
+    ad-hoc ALTER TABLE on startup.
+    """
+    from alembic import command
+
+    cfg = _alembic_config()
+    if needs_stamp:
+        command.stamp(cfg, "head")
+    command.upgrade(cfg, "head")
+
+
+def _inspect_migration_state(sync_conn) -> bool:
+    """Return True if the DB has our tables but no Alembic stamp (needs adopting)."""
+    from alembic.runtime.migration import MigrationContext
+    from sqlalchemy import inspect
+    has_version = MigrationContext.configure(sync_conn).get_current_revision() is not None
+    has_tables = inspect(sync_conn).has_table("broadcast_scripts")
+    return has_tables and not has_version
+
+
 async def init_db():
     """
-    Create tables. In development, an unreachable remote DB falls back to local
-    SQLite; in production the failure is fatal — never silently serve SQLite.
+    Bring the schema up to date. Postgres is Alembic-managed (source of truth);
+    dev SQLite uses create_all. In development an unreachable remote DB falls
+    back to local SQLite; in production a DB failure is fatal — never silently
+    serve SQLite.
     """
     global engine, AsyncSessionLocal, DATABASE_URL
+    import asyncio
+    import logging
     is_production = os.getenv("ENV", "development").lower() == "production"
 
     if is_production and "sqlite" in DATABASE_URL:
-        import logging
         logging.getLogger(__name__).warning(
             "ENV=production but DATABASE_URL is not set — running on SQLite is not supported for production."
         )
 
-    try:
-        async with engine.begin() as conn:
-            await conn.run_sync(Base.metadata.create_all)
-    except Exception:
-        if "sqlite" not in DATABASE_URL:
+    if "sqlite" not in DATABASE_URL:
+        # Postgres: run Alembic migrations (in a thread — env.py uses asyncio.run).
+        try:
+            async with engine.connect() as conn:
+                needs_stamp = await conn.run_sync(_inspect_migration_state)
+            await asyncio.to_thread(_run_alembic_sync, needs_stamp)
+        except Exception:
             if is_production:
                 raise
-            import logging
             logging.getLogger(__name__).warning("Remote DB unreachable, falling back to local SQLite (development only)")
             DATABASE_URL = SQLITE_URL
             engine = _build_engine(SQLITE_URL)
             AsyncSessionLocal.configure(bind=engine)
-            async with engine.begin() as conn:
-                await conn.run_sync(Base.metadata.create_all)
 
-    # Older SQLite files predate newer columns — add them in place.
-    from sqlalchemy import text
-    for ddl in (
-        "ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''",
-        "ALTER TABLE client_api_keys ADD COLUMN webhook_secret VARCHAR",
-        "ALTER TABLE broadcast_scripts ADD COLUMN translations_json VARCHAR DEFAULT '{}'",
-    ):
-        try:
-            async with engine.begin() as conn:
-                await conn.execute(text(ddl))
-        except Exception:
-            pass
+    if "sqlite" in DATABASE_URL:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        # Older local SQLite files predate newer columns — add them in place.
+        from sqlalchemy import text
+        for ddl in (
+            "ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''",
+            "ALTER TABLE client_api_keys ADD COLUMN webhook_secret VARCHAR",
+            "ALTER TABLE broadcast_scripts ADD COLUMN translations_json VARCHAR DEFAULT '{}'",
+        ):
+            try:
+                async with engine.begin() as conn:
+                    await conn.execute(text(ddl))
+            except Exception:
+                pass
 
     # Seed a demo key for local development only — never in production.
     if os.getenv("ENV", "development").lower() == "development":
@@ -245,6 +287,17 @@ async def init_db():
             ]
             session.add_all(demo_scripts)
             await session.commit()
+
+
+async def check_db_health() -> dict:
+    """Verify the live database connection with a lightweight SELECT 1."""
+    from sqlalchemy import text
+    try:
+        async with engine.connect() as conn:
+            await conn.execute(text("SELECT 1"))
+        return {"status": "healthy", "driver": engine.url.drivername}
+    except Exception as e:
+        return {"status": "unhealthy", "error": str(e)}
 
 
 async def save_script_to_db(script_data: dict):

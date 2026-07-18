@@ -158,3 +158,4 @@ class HealthResponse(BaseModel):
     version: str
     uptime_seconds: float
     active_jobs: int = 0
+    services: dict = {}
