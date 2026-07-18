@@ -1,0 +1,12 @@
+# A.N.N. Celery worker — Railway service config (ann-worker).
+# In the ann-worker service Settings → Config-as-code, set the config path to
+# `railway.worker.toml` so this file (not the root railway.toml) drives the build.
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile.ann-worker"
+watchPatterns = ["backend/**", "agents/**", "Dockerfile.ann-worker"]
+
+# No healthcheckPath: the worker serves no HTTP. Restart on crash.
+[deploy]
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10

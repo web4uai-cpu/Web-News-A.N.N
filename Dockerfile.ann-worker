@@ -1,0 +1,15 @@
+# A.N.N. Celery worker — same image as the monolith, but runs the worker
+# process instead of the API. Built from repo root (agents/ live above backend/).
+# Used by the `ann-worker` Railway service. Shares REDIS_URL / DATABASE_URL /
+# LLM_* env with ann-backend.
+FROM python:3.11-slim
+
+WORKDIR /app
+
+COPY backend/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY backend/ .
+
+# No port exposed — the worker consumes the Redis queue, it does not serve HTTP.
+CMD ["sh", "-c", "celery -A celery_app worker --loglevel=info --concurrency=${CELERY_CONCURRENCY:-2}"]
