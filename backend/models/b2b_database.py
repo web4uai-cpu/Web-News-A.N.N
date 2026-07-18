@@ -142,6 +142,7 @@ async def init_db():
     for ddl in (
         "ALTER TABLE client_api_keys ADD COLUMN key_prefix VARCHAR DEFAULT ''",
         "ALTER TABLE client_api_keys ADD COLUMN webhook_secret VARCHAR",
+        "ALTER TABLE broadcast_scripts ADD COLUMN translations_json VARCHAR DEFAULT '{}'",
     ):
         try:
             async with engine.begin() as conn:
